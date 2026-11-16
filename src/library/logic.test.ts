@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Book } from '../core/types';
+import { pagesLabel } from './BookItem';
 import {
   addTag,
   allTags,
@@ -205,5 +206,19 @@ describe('formatList', () => {
     expect(formatList(['txt'])).toBe('TXT');
     expect(formatList(['pdf', 'epub', 'txt'])).toBe('PDF, EPUB and TXT');
     expect(formatList([])).toBe('');
+  });
+});
+
+describe('pagesLabel (library cards, rows, details)', () => {
+  const base = { wordCount: 1000, finishedAt: null as number | null };
+  it('real pages: count when new or finished, current page while reading', () => {
+    const pageStarts = [0, 300, 550, 550, 800];
+    expect(pagesLabel({ ...base, position: 0, pageStarts })).toBe('5 pages');
+    expect(pagesLabel({ ...base, position: 560, pageStarts })).toBe('p. 4 of 5');
+    expect(pagesLabel({ ...base, position: 1000, finishedAt: 1, pageStarts })).toBe('5 pages');
+  });
+  it('no page data (other formats, books imported before pages existed): marked as an estimate', () => {
+    expect(pagesLabel({ ...base, position: 0 })).toBe('≈ 4 pages');
+    expect(pagesLabel({ ...base, position: 600 })).toBe('≈ p. 3 of 4');
   });
 });

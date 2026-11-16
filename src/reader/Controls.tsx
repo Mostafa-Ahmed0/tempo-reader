@@ -1,4 +1,5 @@
 import { memo, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { ESTIMATED_PAGES_HINT, formatPageOf, pageAt, type PageMap } from '../core/pages';
 import { WPM_MAX, WPM_MIN, useSettings } from '../core/settings';
 import { estimateMinutes, formatDuration } from '../core/text';
 import type { TokenizedBook } from '../core/types';
@@ -105,12 +106,14 @@ export function Scrubber({ engine, tok }: { engine: ReaderEngine; tok: Tokenized
   );
 }
 
-/** "37% · 2 h 05 min left · Chapter 3" */
-export function ProgressStats({ engine, tok }: { engine: ReaderEngine; tok: TokenizedBook }) {
+/** "37% · 2 h 05 min left · Page 50 of 312 · Chapter 3" (estimated pages: "≈ page 14 of 120") */
+export function ProgressStats({ engine, tok, pages }: { engine: ReaderEngine; tok: TokenizedBook; pages: PageMap }) {
   const total = engine.total;
   const { wpm } = useEngineState(engine);
   // re-render when the position moves by 1/2000 of the book (not per word); exact values are read at render
   useFrameSelector(engine, (f) => (total ? Math.floor((f.index / total) * 2000) : 0));
+  // ...and on every page turn (long PDFs have more than 2000 pages)
+  useFrameSelector(engine, (f) => pageAt(pages, f.index));
   const exact = engine.position;
   const ch = chapterIndexAt(tok.chapters, Math.min(exact, total - 1));
   const left = formatDuration(estimateMinutes(Math.max(0, total - exact), wpm) * 60000);
@@ -121,6 +124,14 @@ export function ProgressStats({ engine, tok }: { engine: ReaderEngine; tok: Toke
         ·
       </span>
       <span>{left} left</span>
+      <span className="rd-reader__dot" aria-hidden="true">
+        ·
+      </span>
+      <span className="rd-reader__page" title={pages.exact ? undefined : ESTIMATED_PAGES_HINT}>
+        {/* the short form only on very narrow screens (CSS) */}
+        <span className="rd-reader__page-long">{formatPageOf(pages, exact)}</span>
+        <span className="rd-reader__page-short">{formatPageOf(pages, exact, true)}</span>
+      </span>
       {ch >= 0 && tok.chapters.length > 1 ? (
         <>
           <span className="rd-reader__dot" aria-hidden="true">

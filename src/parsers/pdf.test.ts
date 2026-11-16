@@ -2,10 +2,12 @@
 // pdf.js runs in Node (fake worker), so the PDF path is tested end to end on hand-built PDFs.
 // Cover rendering needs a DOM canvas and is NOT covered here.
 import { describe, expect, it } from 'vitest';
+import { pageAt, pageMapOf } from '../core/pages';
+import { tokenize } from '../core/tokenizer';
 import { buildPdf, fileOf, textPages } from './__fixtures__/builders';
 import { ParseError, parseFile } from './index';
-import { pickAuthor, pickTitle } from './pdf';
-import { type PdfItem, findGutter, isPageNumber, itemsToLines, layoutPages, orderLines } from './pdfLayout';
+import { pageStartsFromBlocks, pickAuthor, pickTitle } from './pdf';
+import { type PdfBlock, type PdfItem, findGutter, isPageNumber, itemsToLines, layoutPages, orderLines } from './pdfLayout';
 
 const W = (n: number, w = 'word') => Array.from({ length: n }, (_, i) => `${w}${i % 9}`).join(' ');
 /** Item with a width estimate of 0.5em per char. */
@@ -152,5 +154,74 @@ describe('PDF end to end (pdf.js in Node)', () => {
     const pdf = buildPdf({ pages: [{ texts: para(30, 'x').map((t, i) => ({ x: 72, y: 700 - i * 14, text: t })) }] });
     const book = await parseFile(fileOf(pdf, 'download.txt'));
     expect(book.sections[0].text).toMatch(/^x0 x1/);
+  });
+});
+
+const lines = (ls: string[], y0 = 700) => ls.map((t, i) => ({ x: 72, y: y0 - i * 14, text: t }));
+/** First word of each page, as the reader would show it at that page's start. */
+const firstWords = (words: string[], starts: number[]) => starts.map((s) => words[s]);
+
+describe('PDF pages', () => {
+  it('records one start per page, in the reader word space; blank pages still count', async () => {
+    const pages = Array.from({ length: 12 }, (_, p) => (p === 4 || p === 5 ? { texts: [], rect: true } : { texts: lines(para(40, `p${p}w`)) }));
+    const book = await parseFile(fileOf(buildPdf({ pages }), 'pages.pdf'));
+    const words = tokenize(book.sections).words;
+    expect(book.pageStarts).toHaveLength(12);
+    const starts = book.pageStarts!;
+    expect(starts[0]).toBe(0);
+    for (let p = 1; p < 12; p++) expect(starts[p]).toBeGreaterThanOrEqual(starts[p - 1]);
+    for (const p of [0, 1, 2, 3, 6, 7, 11]) expect(words[starts[p]]).toBe(`p${p}w0`);
+    // the blank pages 5 and 6 (index 4, 5) begin where page 7 begins, so no word is ever "on" them...
+    expect(starts[4]).toBe(starts[6]);
+    expect(starts[5]).toBe(starts[6]);
+    // ...and every word of page 7 is reported as page 7 (1-based), exactly like the PDF
+    const map = pageMapOf({ wordCount: words.length, pageStarts: starts });
+    expect(map).toMatchObject({ exact: true, total: 12 });
+    expect(pageAt(map, starts[6])).toBe(7);
+    expect(pageAt(map, starts[6] - 1)).toBe(4);
+    expect(pageAt(map, words.length)).toBe(12);
+  });
+  it('a page that starts mid-paragraph starts at its first word, also after a hyphenated join', async () => {
+    const full = (w: string, n = 11) => Array.from({ length: n }, (_, i) => `${w}${i % 9}`).join(' ');
+    const pages = [
+      { texts: lines([full('aa'), full('aa'), full('aa'), `${full('aa', 10)} exam-`]) },
+      { texts: lines([`ple ${full('bb', 10)}`, full('bb'), full('bb'), full('bb')]) },
+      { texts: lines([full('cc'), full('cc'), full('cc'), `${full('cc', 10)} end.`]) },
+    ];
+    // page 2 continues page 1's paragraph (hyphenated word split across the break)
+    const book = await parseFile(fileOf(buildPdf({ pages }), 'join.pdf'));
+    const words = tokenize(book.sections).words;
+    expect(book.sections.map((s) => s.text).join('\n\n').split('\n\n')[0]).toMatch(/aa0 example bb0 .* bb1$/); // one joined paragraph
+    expect(words).toContain('example');
+    // "example" began on page 1, so page 2 starts at the word after it
+    expect(firstWords(words, book.pageStarts!)).toEqual(['aa0', 'bb0', 'cc0']);
+    expect(words[book.pageStarts![1] - 1]).toBe('example');
+  });
+  it('headings used as chapter titles are skipped when locating pages', async () => {
+    const pages = [
+      { texts: [{ x: 72, y: 720, size: 20, text: 'Chapter 1' }, ...lines(para(160, 'one'), 690)] },
+      { texts: [{ x: 72, y: 720, size: 20, text: 'Chapter 2' }, ...lines(para(160, 'two'), 690)] },
+    ];
+    const book = await parseFile(fileOf(buildPdf({ pages }), 'h.pdf'));
+    const words = tokenize(book.sections).words;
+    expect(book.sections.map((s) => s.title)).toEqual(['Chapter 1', 'Chapter 2']);
+    expect(firstWords(words, book.pageStarts!)).toEqual(['one0', 'two0']);
+  });
+  it('with an outline, headers and page numbers', async () => {
+    const pages = textPages([para(120, 'alpha'), para(60, 'beta'), para(150, 'gamma'), para(80, 'delta')], { header: 'My Running Header', pageNumbers: true, linesPerPage: 12 });
+    const pdf = buildPdf({ pages, outline: [{ title: 'Opening', page: 0 }, { title: 'Later Part', page: 2 }] });
+    const book = await parseFile(fileOf(pdf, 'o.pdf'));
+    const words = tokenize(book.sections).words;
+    expect(book.pageStarts).toHaveLength(pages.length);
+    // the first word of each page in the source file
+    const expected = pages.map((p) => p.texts.find((t) => t.x === 72)!.text.split(' ')[0].replace(/\.$/, ''));
+    expect(firstWords(words, book.pageStarts!).map((w) => w.replace(/\.$/, ''))).toEqual(expected);
+  });
+  it('pageStartsFromBlocks resyncs after a block that is not in the text', () => {
+    const blk = (text: string, page: number, kind: 'p' | 'h' = 'p'): PdfBlock => ({ kind, text, page, y: 700, size: 10 });
+    // "Intro" is a title (not in the text) that also appears as a word further on
+    const blocks = [blk('Intro', 0, 'h'), blk('first page words here', 0), blk('more Intro text', 0), blk('second page', 1)];
+    const sections = [{ title: 'Intro', text: 'first page words here\n\nmore Intro text\n\nsecond page' }];
+    expect(pageStartsFromBlocks(blocks, sections, 3)).toEqual([0, 7, 9]); // page 3 has no text: starts at the end
   });
 });

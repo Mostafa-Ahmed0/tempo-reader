@@ -4,7 +4,7 @@ import type { Book } from '../core/types';
 import { Button, Icon, Modal, toast } from '../ui';
 import { addTag, bookStatus, cleanTag, formatBadge } from './logic';
 import { XIcon, type XIconName } from './XIcon';
-import { progressLabel } from './BookItem';
+import { pagesLabel, progressLabel } from './BookItem';
 
 type Mode = 'menu' | 'edit' | 'tags' | 'delete' | 'reset';
 
@@ -45,7 +45,7 @@ export function BookMenu({ book, allTags, onClose }: BookMenuProps) {
   return (
     <Modal open onClose={close} title={book.title} className="book-menu">
       <p className="book-menu__sub">
-        {[book.author || 'Unknown author', formatBadge(book), progressLabel(book)].join(' · ')}
+        {[book.author || 'Unknown author', formatBadge(book), progressLabel(book), pagesLabel(book)].join(' · ')}
       </p>
       <ul className="book-menu__list">
         <MenuItem icon="edit" onClick={() => setMode('edit')}>

@@ -111,6 +111,36 @@ describe('ReaderPage', () => {
     expect(num.value).toBe('590');
   });
 
+  it('pages: estimated for a TXT, real pages (with go to page) for a book that has them', async () => {
+    const txt = await seed();
+    const r = renderAt(txt.id);
+    expect(await screen.findByText('≈ page 1 of 1')).toBeTruthy();
+    // no real pages: no "go to page"
+    fireEvent.keyDown(window, { key: 'c' });
+    expect(screen.queryByLabelText('Go to page')).toBeNull();
+    r.unmount();
+
+    // 17 words on 4 PDF pages; page 3 is blank (shares page 4's start, word 14 "Chapter")
+    const pdf = await addBook(
+      { title: 'Paged', sections: [{ title: 'One', text: TEXT }, { title: 'Two', text: 'Chapter two words.' }], pageStarts: [0, 6, 14, 14] },
+      { name: 'p.pdf', size: 1, format: 'pdf' },
+    );
+    renderAt(pdf.id);
+    expect(await screen.findByText('Page 1 of 4')).toBeTruthy();
+    fireEvent.keyDown(window, { key: 'ArrowRight', shiftKey: true }); // next paragraph: word 9 ("New")
+    expect(screen.getByText('Page 2 of 4')).toBeTruthy();
+    fireEvent.keyDown(window, { key: 'c' });
+    const input = await screen.findByLabelText('Go to page');
+    expect((input as HTMLInputElement).value).toBe('2');
+    fireEvent.change(input, { target: { value: '9' } });
+    expect(screen.getByRole('button', { name: 'Go' })).toHaveProperty('disabled', true);
+    fireEvent.change(input, { target: { value: '3' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Go' }));
+    // page 3 has no text, so the reader lands on the first word of page 4 (and shows it as page 4)
+    await waitFor(() => expect(document.querySelector('.rd-ctx__w.is-current')?.textContent).toBe('Chapter'));
+    expect(screen.getByText('Page 4 of 4')).toBeTruthy();
+  });
+
   it('bookmarks: add with excerpt from the current position', async () => {
     const book = await seed(3);
     renderAt(book.id);

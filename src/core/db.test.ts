@@ -19,6 +19,7 @@ import {
   savePosition,
   updateBook,
 } from './db';
+import { pageAt, pageMapOf } from './pages';
 import { DEFAULT_SETTINGS, useSettings } from './settings';
 import type { ParsedBook } from './types';
 
@@ -98,6 +99,28 @@ describe('books', () => {
     expect(b?.finishedAt).toBeNull();
   });
 
+  it('addBook keeps real page starts that fit the text and drops ones that do not', async () => {
+    const withPages = await addBook({ ...sample(), pageStarts: [0, 4, 4, 7] }, { name: 'a.pdf', size: 1, format: 'pdf' });
+    expect((await getBook(withPages.id))?.pageStarts).toEqual([0, 4, 4, 7]);
+    const broken = await addBook({ ...sample(), pageStarts: [0, 50] }, { name: 'b.pdf', size: 1, format: 'pdf' });
+    expect(await getBook(broken.id)).not.toHaveProperty('pageStarts');
+    const plain = await addBook(sample(), file);
+    expect(plain).not.toHaveProperty('pageStarts');
+  });
+
+  it('a book stored before page data existed still works and gets estimated pages', async () => {
+    // a v1 record exactly as older versions wrote it (no pageStarts)
+    const old = { id: 'old-book', title: 'Old', author: '', format: 'pdf' as const, fileName: 'old.pdf', fileSize: 1, wordCount: 1000, position: 600, addedAt: 1, lastOpenedAt: null, finishedAt: null, favorite: false, tags: [] };
+    await db.books.add(old);
+    const b = await getBook('old-book');
+    const map = pageMapOf(b!);
+    expect(map.exact).toBe(false);
+    expect(map.total).toBe(4);
+    expect(pageAt(map, b!.position)).toBe(3);
+    await savePosition('old-book', 700);
+    expect((await getBook('old-book'))?.position).toBe(700);
+  });
+
   it('savePosition on a missing book is a no-op', async () => {
     await expect(savePosition('nope', 3)).resolves.toBeUndefined();
   });
@@ -171,6 +194,27 @@ describe('backup', () => {
     expect(await listSessions()).toHaveLength(1);
     expect(useSettings.getState().wpm).toBe(555);
     expect(useSettings.getState().theme).toBe('sepia');
+  });
+
+  it('carries real page starts to another device; older backups without them still import', async () => {
+    const pdf = await addBook({ ...sample('PDF'), pageStarts: [0, 5] }, { name: 'a.pdf', size: 1, format: 'pdf' });
+    const txt = await addBook(sample('TXT'), file);
+    const blob = await exportBackup();
+    expect(JSON.parse(await blob.text()).books.find((b: { id: string }) => b.id === pdf.id).pageStarts).toEqual([0, 5]);
+    await Promise.all(db.tables.map((t) => t.clear()));
+    await importBackup(blob);
+    expect((await getBook(pdf.id))?.pageStarts).toEqual([0, 5]);
+    expect(pageMapOf((await getBook(pdf.id))!)).toMatchObject({ exact: true, total: 2 });
+    expect(pageMapOf((await getBook(txt.id))!).exact).toBe(false);
+
+    // a backup written before pages existed (no pageStarts anywhere)
+    await Promise.all(db.tables.map((t) => t.clear()));
+    const json = JSON.parse(await blob.text());
+    for (const b of json.books) delete b.pageStarts;
+    await expect(importBackup(new Blob([JSON.stringify(json)]))).resolves.toEqual({ books: 2 });
+    const restored = await getBook(pdf.id);
+    expect(restored).not.toHaveProperty('pageStarts');
+    expect(pageMapOf(restored!)).toMatchObject({ exact: false, total: 1 });
   });
 
   it('merges by id without removing existing records', async () => {

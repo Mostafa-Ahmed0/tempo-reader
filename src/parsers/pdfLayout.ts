@@ -44,6 +44,8 @@ export interface PdfBlock {
   size: number;
   /** last line ended short of the right margin (for joining across pages) */
   lastLineShort?: boolean;
+  /** paragraph joined across pages: character offset in `text` where each later page's part begins */
+  breaks?: { page: number; at: number }[];
 }
 
 const median = (xs: number[]): number => {
@@ -409,7 +411,10 @@ export function joinAcrossPages(blocks: PdfBlock[]): PdfBlock[] {
       (!RE_END.test(p.text) || /^\p{Ll}/u.test(b.text)) &&
       !p.lastLineShort
     ) {
-      out[out.length - 1] = { ...p, text: joinFragments(p.text, b.text), lastLineShort: b.lastLineShort };
+      const text = joinFragments(p.text, b.text);
+      const at = text.length - b.text.length; // b.text is always the tail of the joined text
+      const breaks = [...(p.breaks ?? []), { page: b.page, at }, ...(b.breaks ?? []).map((x) => ({ page: x.page, at: at + x.at }))];
+      out[out.length - 1] = { ...p, text, lastLineShort: b.lastLineShort, breaks };
     } else out.push(b);
   }
   return out;

@@ -4,6 +4,7 @@ import { ROUTES } from '../app/routes';
 import { addSession, savePosition } from '../core/db';
 import { registerBackHandler } from '../platform/backButton';
 import { useSettings, type Settings } from '../core/settings';
+import { pageMapOf } from '../core/pages';
 import { formatDuration } from '../core/text';
 import type { Book, TokenizedBook } from '../core/types';
 import { Button, Icon, IconButton, toast } from '../ui';
@@ -52,6 +53,8 @@ export function Reader({ book, tok }: { book: Book; tok: TokenizedBook }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const engine = useMemo(() => new ReaderEngine(tok, engineOptions(useSettings.getState()), book.position), [tok, book.id]);
   const dir = useMemo(() => dominantDirection(tok.words), [tok]);
+  // real pages when the book has them (PDF), else the estimate; in the reader's own word space
+  const pages = useMemo(() => pageMapOf({ wordCount: tok.words.length, pageStarts: book.pageStarts }), [tok, book.pageStarts]);
   const state = useEngineState(engine);
 
   // ---------------------------------------------------------------- settings → engine
@@ -324,7 +327,7 @@ export function Reader({ book, tok }: { book: Book; tok: TokenizedBook }) {
 
       <footer className="rd-reader__bottom rd-reader__chrome">
         <Scrubber engine={engine} tok={tok} />
-        <ProgressStats engine={engine} tok={tok} />
+        <ProgressStats engine={engine} tok={tok} pages={pages} />
         <div className="rd-reader__transport">
           <button type="button" className="btn btn--ghost btn--md btn--icon" aria-label="Previous paragraph" title="Previous paragraph (Shift+←)" onClick={() => engine.prevParagraph()}>
             <ReaderIcon name="para-back" />
@@ -358,8 +361,8 @@ export function Reader({ book, tok }: { book: Book; tok: TokenizedBook }) {
       </div>
 
       <QuickSettings open={sheet === 'settings'} onClose={closeSheet} previewText={engine.getFrame().text} />
-      <BookmarksSheet open={sheet === 'bookmarks'} onClose={closeSheet} bookId={book.id} engine={engine} tok={tok} />
-      <ChaptersSheet open={sheet === 'chapters'} onClose={closeSheet} engine={engine} tok={tok} />
+      <BookmarksSheet open={sheet === 'bookmarks'} onClose={closeSheet} bookId={book.id} engine={engine} tok={tok} pages={pages} />
+      <ChaptersSheet open={sheet === 'chapters'} onClose={closeSheet} engine={engine} tok={tok} pages={pages} />
       <ShortcutsHelp open={sheet === 'help'} onClose={closeSheet} />
     </div>
   );

@@ -182,6 +182,20 @@
   color: var(--text);
   font-weight: 600;
 }
+.rd-reader__page {
+  flex-shrink: 0;
+}
+.rd-reader__page-short {
+  display: none;
+}
+@media (max-width: 359px) {
+  .rd-reader__page-long {
+    display: none;
+  }
+  .rd-reader__page-short {
+    display: inline;
+  }
+}
 .rd-reader__chapter {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -653,4 +667,48 @@
   .rd-speed__training-dot {
     animation: none;
   }
+}
+
+/* go to page (chapters sheet footer, books with real pages) */
+.rd-goto {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.rd-goto__label {
+  color: var(--text);
+}
+.rd-goto__of {
+  margin-right: auto;
+  font-variant-numeric: tabular-nums;
+}
+.rd-goto__input {
+  width: 5em;
+  height: 36px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.rd-goto__input::-webkit-outer-spin-button,
+.rd-goto__input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.rd-goto__input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+.rd-goto__input[aria-invalid='true'] {
+  border-color: var(--danger);
 }

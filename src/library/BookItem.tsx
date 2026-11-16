@@ -1,6 +1,7 @@
 import { memo, useRef, type MouseEvent, type PointerEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { ROUTES } from '../app/routes';
+import { ESTIMATED_PAGES_HINT, formatPageCount, formatPageOf, pageAccessibleLabel, pageMapOf } from '../core/pages';
 import { estimateMinutes, formatDuration } from '../core/text';
 import type { Book } from '../core/types';
 import { Icon } from '../ui';
@@ -13,6 +14,21 @@ export function timeLeftLabel(book: Pick<Book, 'position' | 'wordCount' | 'finis
   if (book.finishedAt != null) return 'Finished';
   if (book.wordCount === 0) return 'No text';
   return `${formatDuration(estimateMinutes(left, wpm) * 60_000)} left`;
+}
+
+type PagesFields = Pick<Book, 'position' | 'wordCount' | 'finishedAt' | 'pageStarts'>;
+
+/** While reading: "p. 50 of 312" (estimate: "≈ p. 14 of 120"); new or finished: "312 pages" / "≈ 120 pages". */
+export function pagesLabel(book: PagesFields): string {
+  const map = pageMapOf(book);
+  return bookStatus(book) === 'reading' ? formatPageOf(map, book.position, true) : formatPageCount(map);
+}
+
+/** Spoken form of pagesLabel ("about" instead of "≈"). */
+function pagesA11y(book: PagesFields): string {
+  const map = pageMapOf(book);
+  if (bookStatus(book) === 'reading') return pageAccessibleLabel(map, book.position);
+  return `${map.exact ? '' : 'about '}${map.total} ${map.total === 1 ? 'page' : 'pages'}`;
 }
 
 export function progressLabel(book: Pick<Book, 'position' | 'wordCount' | 'finishedAt'>): string {
@@ -39,6 +55,8 @@ function BookItemImpl({ book, view, wpm, onMore, onToggleFavorite }: BookItemPro
   const finished = status === 'finished';
   const pLabel = progressLabel(book);
   const tLabel = timeLeftLabel(book, wpm);
+  const pagesText = pagesLabel(book);
+  const pagesHint = pageMapOf(book).exact ? undefined : ESTIMATED_PAGES_HINT;
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const start = useRef<{ x: number; y: number } | null>(null);
   const suppressClick = useRef(false);
@@ -87,6 +105,7 @@ function BookItemImpl({ book, view, wpm, onMore, onToggleFavorite }: BookItemPro
     book.title,
     book.author ? `by ${book.author}` : '',
     finished ? 'finished' : status === 'not-started' ? 'not started' : `${Math.floor(progress * 100)}% read, ${tLabel}`,
+    pagesA11y(book),
   ]
     .filter(Boolean)
     .join(', ');
@@ -143,6 +162,10 @@ function BookItemImpl({ book, view, wpm, onMore, onToggleFavorite }: BookItemPro
               <span className="tm-book__meta-text">
                 {pLabel}
                 {!finished && book.wordCount > 0 ? ` · ${tLabel}` : ''}
+                {' · '}
+                <span className="tm-book__pages" title={pagesHint}>
+                  {pagesText}
+                </span>
               </span>
             </span>
             <span className="tm-book__bar" aria-hidden="true">
@@ -170,6 +193,9 @@ function BookItemImpl({ book, view, wpm, onMore, onToggleFavorite }: BookItemPro
         <span className="tm-book__meta-text">
           {pLabel}
           {!finished && book.wordCount > 0 ? ` · ${tLabel}` : ''}
+          <span className="tm-book__pages tm-book__pages--line" title={pagesHint}>
+            {pagesText}
+          </span>
         </span>
       </Link>
       {actions}
@@ -186,6 +212,8 @@ const sameBook = (a: Book, b: Book) =>
   a.finishedAt === b.finishedAt &&
   a.favorite === b.favorite &&
   a.format === b.format &&
+  // page starts never change after import (only a backup import can add them)
+  a.pageStarts?.length === b.pageStarts?.length &&
   a.cover?.size === b.cover?.size &&
   a.cover?.type === b.cover?.type;
 

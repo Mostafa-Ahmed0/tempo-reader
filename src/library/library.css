@@ -392,6 +392,13 @@
 .tm-book--card .tm-book__meta-text {
   padding-right: 64px; /* room for the action buttons */
 }
+/* wraps as a whole ("p. 50 of 312" never splits); on cards it gets its own line */
+.tm-book__pages {
+  white-space: nowrap;
+}
+.tm-book__pages--line {
+  display: block;
+}
 .tm-book__actions {
   display: flex;
   align-items: center;

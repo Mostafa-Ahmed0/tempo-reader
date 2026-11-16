@@ -6,7 +6,7 @@ import { useSettings } from '../core/settings';
 import type { Book } from '../core/types';
 import { Icon, IconButton, PageHeader, toast } from '../ui';
 import { BookCover } from './BookCover';
-import { BookItem, progressLabel, timeLeftLabel } from './BookItem';
+import { BookItem, pagesLabel, progressLabel, timeLeftLabel } from './BookItem';
 import { BookMenu } from './BookMenu';
 import { DropOverlay, ImportPanel, PasteModal } from './ImportParts';
 import { loadParsers, useImports } from './importer';
@@ -269,7 +269,9 @@ function ContinueCard({ book, wpm }: { book: Book; wpm: number }) {
             <span style={{ width: `${progress * 100}%` }} />
           </div>
           <p className="continue__meta">
-            <span>{book.position > 0 ? `${progressLabel(book)} read` : "Just started"}</span>
+            <span>
+              {book.position > 0 ? `${progressLabel(book)} read` : 'Just started'} · {pagesLabel(book)}
+            </span>
             <span>
               {timeLeftLabel(book, wpm)} at {wpm} wpm
             </span>

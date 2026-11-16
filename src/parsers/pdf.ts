@@ -2,6 +2,7 @@
  * PDF via pdf.js (legacy build for older Android WebViews; loaded with dynamic import, worker via Vite ?url).
  * Layout reconstruction lives in pdfLayout.ts. Chapters from the outline, else headings, else page ranges.
  */
+import { tokenize } from '../core/tokenizer';
 import type { ParsedBook, ParsedSection } from '../core/types';
 import { ParseError, corrupt } from './errors';
 import { type Line, type PdfBlock, type PdfItem, itemsToLines, layoutLines, orderLines } from './pdfLayout';
@@ -103,8 +104,15 @@ export async function parsePdfBytes(bytes: Uint8Array, fileName: string, onProgr
     const sections =
       (await outlineSections(doc, blocks, stats.bodySize).catch(() => null)) ?? headingSections(blocks, numPages) ?? pageSections(blocks, numPages);
     onProgress?.(0.96);
+    const finalSections = fillTitles(sections);
+    let pageStarts: number[] | undefined;
+    try {
+      pageStarts = pageStartsFromBlocks(blocks, finalSections, numPages);
+    } catch {
+      pageStarts = undefined; // never fail an import over page numbers; the reader estimates them instead
+    }
     const cover = await renderCover(doc).catch(() => undefined);
-    return { title, author, cover, sections: fillTitles(sections) };
+    return { title, author, cover, sections: finalSections, ...(pageStarts ? { pageStarts } : {}) };
   } finally {
     void task.destroy();
   }
@@ -270,6 +278,76 @@ export function pageSections(blocks: PdfBlock[], numPages: number): ParsedSectio
     if (text) out.push({ title: `Pages ${start + 1}\u2013${end}`, text });
   }
   return out.length ? out : [{ title: '', text: '' }];
+}
+
+// ---------------------------------------------------------------------------
+// Pages
+// ---------------------------------------------------------------------------
+
+/** Leading tokens compared when locating a block in the book's word stream. */
+const MATCH_TOKENS = 6;
+/** How far ahead (in words) a block is looked for when the stream and the blocks drift apart. */
+const RESYNC_WINDOW = 400;
+
+/**
+ * Word index (in `tokenize(sections)` space) where each of the `numPages` pages begins.
+ *
+ * Every word of the sections comes from a layout block, in block order; some blocks are not in the text
+ * (headings used as chapter titles). So each block is located at or just after the previous block's end,
+ * and a block is skipped when the next block is found no later than it (it was not in the text). Paragraphs
+ * joined across pages carry `breaks`, so a page that starts mid-paragraph starts at the right word.
+ * Pages without text (images, blank pages, dropped headers only) get the next page's start, so page N
+ * here is always page N of the PDF.
+ */
+export function pageStartsFromBlocks(blocks: PdfBlock[], sections: ParsedSection[], numPages: number): number[] {
+  const words = tokenize(sections).words;
+  const tokensOf = (text: string) => tokenize([{ title: '', text }]).words;
+  const matchesAt = (toks: string[], at: number) => {
+    const k = Math.min(MATCH_TOKENS, toks.length);
+    if (at + k > words.length) return false;
+    for (let j = 0; j < k; j++) if (words[at + j] !== toks[j]) return false;
+    return true;
+  };
+  const find = (toks: string[], from: number, to: number) => {
+    for (let at = from; at <= to && at < words.length; at++) if (matchesAt(toks, at)) return at;
+    return -1;
+  };
+
+  const first = new Array<number>(numPages).fill(-1);
+  const mark = (page: number, at: number) => {
+    if (page >= 0 && page < numPages && first[page] < 0) first[page] = at;
+  };
+  let ptr = 0;
+  let next = 0;
+  let nextToks: string[] = [];
+  const advanceNext = (from: number) => {
+    next = from;
+    nextToks = [];
+    while (next < blocks.length && !(nextToks = tokensOf(blocks[next].text)).length) next++;
+  };
+  advanceNext(0);
+  while (next < blocks.length) {
+    const i = next;
+    const toks = nextToks;
+    advanceNext(i + 1);
+    const at = find(toks, ptr, ptr + RESYNC_WINDOW);
+    if (at < 0) continue;
+    // the following block found no later than this one: this block is not in the text (e.g. a chapter title)
+    if (next < blocks.length && find(nextToks, ptr, at) >= 0) continue;
+    const b = blocks[i];
+    mark(b.page, at);
+    for (const br of b.breaks ?? []) mark(br.page, at + Math.min(toks.length, tokensOf(b.text.slice(0, br.at)).length));
+    ptr = at + toks.length;
+  }
+
+  const starts = new Array<number>(numPages);
+  let after = words.length;
+  for (let p = numPages - 1; p >= 0; p--) {
+    if (first[p] >= 0) after = Math.min(after, first[p]);
+    starts[p] = after;
+  }
+  if (numPages) starts[0] = 0;
+  return starts;
 }
 
 // ---------------------------------------------------------------------------

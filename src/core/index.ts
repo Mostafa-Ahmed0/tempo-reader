@@ -4,3 +4,4 @@ export * from './tokenizer';
 export * from './settings';
 export * from './db';
 export * from './text';
+export * from './pages';

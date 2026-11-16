@@ -10,6 +10,11 @@ export interface ParsedBook {
   author?: string;
   cover?: Blob; // image blob if the format has one
   sections: ParsedSection[]; // at least one; chapters where the format has them
+  /**
+   * Real pages of the source file (PDF): word index (in `tokenize(sections)` space) where each page begins,
+   * one entry per page, ascending; pages without text repeat the next page's start. Absent = no real pages.
+   */
+  pageStarts?: number[];
 }
 
 /** Library record (small; listed often). */
@@ -28,6 +33,8 @@ export interface Book {
   favorite: boolean;
   tags: string[]; // user collections/shelves
   cover?: Blob;
+  /** Real page starts (see ParsedBook.pageStarts). Absent for formats without pages and for books imported before pages existed. */
+  pageStarts?: number[];
 }
 
 /** Heavy record, loaded only when reading. */

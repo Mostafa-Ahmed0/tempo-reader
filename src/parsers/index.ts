@@ -257,6 +257,8 @@ function finalize(book: ParsedBook, kind: ParserKind): ParsedBook {
     author: book.author?.replace(/\s+/g, ' ').trim() || undefined,
     cover: book.cover,
     sections,
+    // trimming and dropping empty sections does not change the token stream, so page starts stay valid
+    ...(book.pageStarts ? { pageStarts: book.pageStarts } : {}),
   };
 }
 

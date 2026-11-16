@@ -1,5 +1,6 @@
 import Dexie, { type EntityTable } from 'dexie';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { isValidPageStarts } from './pages';
 import { countWords } from './tokenizer';
 import { pickSettings, sanitizeSettings, useSettings } from './settings';
 import type { Book, BookContent, BookFormat, Bookmark, ParsedBook, ReadingSession } from './types';
@@ -40,6 +41,7 @@ function stripExtension(name: string): string {
 /** Tokenizes for wordCount, writes book + content in one transaction. */
 export async function addBook(parsed: ParsedBook, file: { name: string; size: number; format: BookFormat }): Promise<Book> {
   const sections = parsed.sections.length ? parsed.sections : [{ title: '', text: '' }];
+  const wordCount = countWords(sections);
   const book: Book = {
     id: newId(),
     title: parsed.title?.trim() || stripExtension(file.name) || 'Untitled',
@@ -47,7 +49,7 @@ export async function addBook(parsed: ParsedBook, file: { name: string; size: nu
     format: file.format,
     fileName: file.name,
     fileSize: file.size,
-    wordCount: countWords(sections),
+    wordCount,
     position: 0,
     addedAt: Date.now(),
     lastOpenedAt: null,
@@ -55,6 +57,8 @@ export async function addBook(parsed: ParsedBook, file: { name: string; size: nu
     favorite: false,
     tags: [],
     ...(parsed.cover ? { cover: parsed.cover } : {}),
+    // real pages only when they fit this word stream; otherwise the reader estimates them
+    ...(isValidPageStarts(parsed.pageStarts, wordCount) ? { pageStarts: parsed.pageStarts } : {}),
   };
   await db.transaction('rw', db.books, db.contents, async () => {
     await db.books.add(book);

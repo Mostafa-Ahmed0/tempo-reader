@@ -15,6 +15,9 @@ installed like an app from the browser (it then works offline), and can be built
 - Reader: 60–1500 words per minute, 1–3 words at a time, focus-letter highlight in your colour,
   smart pauses at punctuation and paragraph ends, soft start, speed training (gradual speed-up),
   chapters, bookmarks, context view when paused, keyboard shortcuts, keeps the screen on while playing.
+- Pages: the current page and page count in the reader and the library. PDFs show their real pages
+  (page 50 in Tempo is page 50 of the PDF, with "go to page"); other formats an estimate of 275 words
+  per page, marked "≈".
 - Fonts: Inter, Literata (serif), JetBrains Mono and OpenDyslexic, built in (they work offline).
 - Themes: dark, light, sepia and true black.
 - Stats: reading time per day, speed over time, streaks, daily goal.

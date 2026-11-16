@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { addBookmark, deleteBookmark, listBookmarks } from '../core/db';
+import { formatPage, pageAt, pageStartIndex, type PageMap } from '../core/pages';
 import {
   FONT_SIZE_MAX,
   FONT_SIZE_MIN,
@@ -231,7 +232,21 @@ export async function createBookmark(bookId: string, engine: ReaderEngine): Prom
   return addBookmark({ bookId, position: Math.max(0, pos), excerpt: excerptAt(engine.words, pos, para), note: '' });
 }
 
-export function BookmarksSheet({ open, onClose, bookId, engine, tok }: { open: boolean; onClose: () => void; bookId: string; engine: ReaderEngine; tok: TokenizedBook }) {
+export function BookmarksSheet({
+  open,
+  onClose,
+  bookId,
+  engine,
+  tok,
+  pages,
+}: {
+  open: boolean;
+  onClose: () => void;
+  bookId: string;
+  engine: ReaderEngine;
+  tok: TokenizedBook;
+  pages: PageMap;
+}) {
   const [list, setList] = useState<Bookmark[] | null>(null);
   const refresh = () => listBookmarks(bookId).then(setList, () => setList([]));
   useEffect(() => {
@@ -286,7 +301,8 @@ export function BookmarksSheet({ open, onClose, bookId, engine, tok }: { open: b
                   }}
                 >
                   <span className="rd-blist__meta">
-                    {pct}%{ch >= 0 && tok.chapters.length > 1 ? ` · ${tok.chapters[ch].title}` : ''} · {new Date(b.createdAt).toLocaleDateString()}
+                    {pct}% · {formatPage(pages, b.position)}
+                    {ch >= 0 && tok.chapters.length > 1 ? ` · ${tok.chapters[ch].title}` : ''} · {new Date(b.createdAt).toLocaleDateString()}
                   </span>
                   <span className="rd-blist__excerpt" dir="auto">
                     {b.excerpt}
@@ -304,7 +320,19 @@ export function BookmarksSheet({ open, onClose, bookId, engine, tok }: { open: b
 
 // ---------------------------------------------------------------- chapters
 
-export function ChaptersSheet({ open, onClose, engine, tok }: { open: boolean; onClose: () => void; engine: ReaderEngine; tok: TokenizedBook }) {
+export function ChaptersSheet({
+  open,
+  onClose,
+  engine,
+  tok,
+  pages,
+}: {
+  open: boolean;
+  onClose: () => void;
+  engine: ReaderEngine;
+  tok: TokenizedBook;
+  pages: PageMap;
+}) {
   const current = chapterIndexAt(tok.chapters, Math.min(engine.position, engine.total - 1));
   const listRef = useRef<HTMLUListElement>(null);
   useEffect(() => {
@@ -314,7 +342,13 @@ export function ChaptersSheet({ open, onClose, engine, tok }: { open: boolean; o
     el?.focus();
   }, [open]);
   return (
-    <Modal open={open} onClose={onClose} title="Chapters">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Chapters"
+      // only real pages can be looked up ("page 50" of the PDF); estimated pages would point somewhere else
+      footer={pages.exact && pages.total > 1 ? <GoToPage key={String(open)} engine={engine} pages={pages} onDone={onClose} /> : undefined}
+    >
       <ul className="rd-clist" ref={listRef}>
         {tok.chapters.map((c, i) => {
           const next = tok.chapters[i + 1]?.wordIndex ?? engine.total;
@@ -332,13 +366,56 @@ export function ChaptersSheet({ open, onClose, engine, tok }: { open: boolean; o
                 <span className="rd-clist__title" dir="auto">
                   {c.title}
                 </span>
-                <span className="rd-clist__meta">{formatDuration(estimateMinutes(next - c.wordIndex, engine.getState().wpm) * 60000)} · {engine.total ? Math.floor((c.wordIndex / engine.total) * 100) : 0}%</span>
+                <span className="rd-clist__meta">
+                  {formatDuration(estimateMinutes(next - c.wordIndex, engine.getState().wpm) * 60000)} · {engine.total ? Math.floor((c.wordIndex / engine.total) * 100) : 0}% ·{' '}
+                  {formatPage(pages, c.wordIndex)}
+                </span>
               </button>
             </li>
           );
         })}
       </ul>
     </Modal>
+  );
+}
+
+/** "Go to page [50] of 312 [Go]" for books with real pages. */
+function GoToPage({ engine, pages, onDone }: { engine: ReaderEngine; pages: PageMap; onDone: () => void }) {
+  const id = useId();
+  const [draft, setDraft] = useState(() => String(pageAt(pages, engine.position)));
+  const n = Number(draft);
+  const valid = draft.trim() !== '' && Number.isInteger(n) && n >= 1 && n <= pages.total;
+  return (
+    <form
+      className="rd-goto"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!valid) return;
+        engine.seek(pageStartIndex(pages, n));
+        onDone();
+      }}
+    >
+      <label htmlFor={id} className="rd-goto__label">
+        Go to page
+      </label>
+      <input
+        id={id}
+        className="rd-goto__input"
+        type="number"
+        inputMode="numeric"
+        min={1}
+        max={pages.total}
+        step={1}
+        value={draft}
+        aria-invalid={draft.trim() !== '' && !valid ? true : undefined}
+        onFocus={(e) => e.currentTarget.select()}
+        onChange={(e) => setDraft(e.currentTarget.value)}
+      />
+      <span className="rd-goto__of">of {pages.total.toLocaleString('en-US')}</span>
+      <Button type="submit" variant="primary" disabled={!valid}>
+        Go
+      </Button>
+    </form>
   );
 }
 
