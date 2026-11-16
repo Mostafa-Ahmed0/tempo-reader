@@ -1,9 +1,8 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { addBook, db, getBook, listBookmarks, listSessions } from '../core/db';
 import { useSettings } from '../core/settings';
-import ReaderPage from './ReaderPage';
+import { readerTree, renderReaderAt } from './readerTestUtils';
 
 const TEXT = 'First sentence here. Second sentence follows now. Third one.\n\nNew paragraph starts. And ends.';
 
@@ -13,16 +12,6 @@ async function seed(position = 0) {
   return book;
 }
 
-function renderAt(id: string) {
-  return render(
-    <MemoryRouter initialEntries={[`/read/${id}`]}>
-      <Routes>
-        <Route path="/" element={<p>LIBRARY</p>} />
-        <Route path="/read/:bookId" element={<ReaderPage />} />
-      </Routes>
-    </MemoryRouter>,
-  );
-}
 
 beforeEach(async () => {
   useSettings.getState().reset();
@@ -36,7 +25,7 @@ afterEach(cleanup);
 
 describe('ReaderPage', () => {
   it('shows a way back when the book does not exist', async () => {
-    renderAt('nope');
+    render(readerTree('nope'));
     expect(await screen.findByText(/isn't in your library any more/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /back to library/i }));
     expect(screen.getByText('LIBRARY')).toBeTruthy();
@@ -44,12 +33,13 @@ describe('ReaderPage', () => {
 
   it('opens at the saved position with the context view, and tapping a word seeks there', async () => {
     const book = await seed(3); // "Second"
-    renderAt(book.id);
-    const current = await waitFor(() => {
-      const el = document.querySelector('.rd-ctx__w.is-current');
-      if (!el) throw new Error('no context yet');
-      return el;
-    });
+    const { found: current } = await renderReaderAt(book.id, () =>
+      waitFor(() => {
+        const el = document.querySelector('.rd-ctx__w.is-current');
+        if (!el) throw new Error('no context yet');
+        return el;
+      }),
+    );
     expect(current.textContent).toBe('Second');
     fireEvent.click(screen.getByText('paragraph'));
     expect(document.querySelector('.rd-ctx__w.is-current')?.textContent).toBe('paragraph');
@@ -57,8 +47,7 @@ describe('ReaderPage', () => {
 
   it('keyboard: space plays/pauses, arrows navigate, up/down change speed, Esc exits; position is saved', async () => {
     const book = await seed();
-    renderAt(book.id);
-    await screen.findByRole('button', { name: 'Play' });
+    await renderReaderAt(book.id);
     fireEvent.keyDown(window, { key: 'ArrowRight' });
     expect(document.querySelector('.rd-ctx__w.is-current')?.textContent).toBe('Second');
     fireEvent.keyDown(window, { key: 'ArrowRight', shiftKey: true });
@@ -89,8 +78,8 @@ describe('ReaderPage', () => {
 
   it('rd-speed controls: number field, slider and −/+ stay in sync with settings', async () => {
     const book = await seed();
-    renderAt(book.id);
-    const num = (await screen.findByRole('spinbutton', { name: /type a value/i })) as HTMLInputElement;
+    const { found } = await renderReaderAt(book.id, () => screen.findByRole('spinbutton', { name: /type a value/i }));
+    const num = found as HTMLInputElement;
     const range = screen.getByRole('slider', { name: 'Words per minute' }) as HTMLInputElement;
     fireEvent.focus(num);
     fireEvent.change(num, { target: { value: '45' } }); // below min: not committed while typing
@@ -113,8 +102,7 @@ describe('ReaderPage', () => {
 
   it('pages: estimated for a TXT, real pages (with go to page) for a book that has them', async () => {
     const txt = await seed();
-    const r = renderAt(txt.id);
-    expect(await screen.findByText('≈ page 1 of 1')).toBeTruthy();
+    const { view: r } = await renderReaderAt(txt.id, () => screen.findByText('≈ page 1 of 1'));
     // no real pages: no "go to page"
     fireEvent.keyDown(window, { key: 'c' });
     expect(screen.queryByLabelText('Go to page')).toBeNull();
@@ -125,8 +113,7 @@ describe('ReaderPage', () => {
       { title: 'Paged', sections: [{ title: 'One', text: TEXT }, { title: 'Two', text: 'Chapter two words.' }], pageStarts: [0, 6, 14, 14] },
       { name: 'p.pdf', size: 1, format: 'pdf' },
     );
-    renderAt(pdf.id);
-    expect(await screen.findByText('Page 1 of 4')).toBeTruthy();
+    await renderReaderAt(pdf.id, () => screen.findByText('Page 1 of 4'));
     fireEvent.keyDown(window, { key: 'ArrowRight', shiftKey: true }); // next paragraph: word 9 ("New")
     expect(screen.getByText('Page 2 of 4')).toBeTruthy();
     fireEvent.keyDown(window, { key: 'c' });
@@ -143,8 +130,7 @@ describe('ReaderPage', () => {
 
   it('bookmarks: add with excerpt from the current position', async () => {
     const book = await seed(3);
-    renderAt(book.id);
-    await screen.findByRole('button', { name: 'Play' });
+    await renderReaderAt(book.id);
     fireEvent.click(screen.getByRole('button', { name: 'Add bookmark here' }));
     await waitFor(async () => expect((await listBookmarks(book.id)).length).toBe(1));
     const [bm] = await listBookmarks(book.id);
@@ -155,8 +141,8 @@ describe('ReaderPage', () => {
   it('plays to the end, shows the completion view; very short readings are not stored as sessions', async () => {
     useSettings.getState().set({ wpm: 1500, smartPacing: false });
     const book = await seed();
-    renderAt(book.id);
-    fireEvent.click(await screen.findByRole('button', { name: 'Play' }));
+    const { found: play } = await renderReaderAt(book.id);
+    fireEvent.click(play);
     expect(await screen.findByText('Finished', { selector: '.rd-done__kicker' }, { timeout: 3000 })).toBeTruthy();
     await waitFor(async () => expect((await getBook(book.id))?.finishedAt).not.toBeNull());
     expect(await listSessions()).toHaveLength(0);

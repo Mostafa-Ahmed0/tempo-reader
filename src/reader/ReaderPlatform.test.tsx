@@ -1,10 +1,9 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { act, cleanup, fireEvent, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { addBook, db } from '../core/db';
 import { useSettings } from '../core/settings';
 import { handleBack } from '../platform/backButton';
-import ReaderPage from './ReaderPage';
+import { renderReaderAt } from './readerTestUtils';
 
 const wake = vi.hoisted(() => ({ acquired: 0, released: 0 }));
 vi.mock('../platform/wakeLock', () => ({
@@ -20,15 +19,7 @@ const TEXT = 'First sentence here. Second sentence follows now. Third one.\n\nNe
 
 async function openReader() {
   const book = await addBook({ title: 'Test book', sections: [{ title: 'One', text: TEXT }] }, { name: 't.txt', size: 1, format: 'txt' });
-  render(
-    <MemoryRouter initialEntries={[`/read/${book.id}`]}>
-      <Routes>
-        <Route path="/" element={<p>LIBRARY</p>} />
-        <Route path="/read/:bookId" element={<ReaderPage />} />
-      </Routes>
-    </MemoryRouter>,
-  );
-  await screen.findByRole('button', { name: 'Play' });
+  await renderReaderAt(book.id);
 }
 
 const back = () => {
