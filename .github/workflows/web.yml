@@ -31,7 +31,10 @@ jobs:
 
       - run: npm ci
       - run: npm run typecheck
+      # The stats tests cover DST edge cases and need a zone with DST set before Node starts.
       - run: npm test
+        env:
+          TZ: Europe/Berlin
       - run: npm run build
 
       - name: Keep dist/ for the deploy job
