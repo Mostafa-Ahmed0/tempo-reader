@@ -1,5 +1,6 @@
 # Type-check, test and build the web app on every push and pull request.
-# Deploying to GitHub Pages is manual: Actions tab → "Web" → Run workflow → tick "deploy".
+# Every push to main also deploys dist/ to GitHub Pages; other branches and pull requests only run the checks.
+# A manual run (Actions tab → "Web" → Run workflow → tick "deploy") deploys from any branch.
 # (One-time setup: repository Settings → Pages → Source: "GitHub Actions".)
 name: Web
 
@@ -38,13 +39,13 @@ jobs:
       - run: npm run build
 
       - name: Keep dist/ for the deploy job
-        if: github.event_name == 'workflow_dispatch' && inputs.deploy
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.deploy)
         uses: actions/upload-pages-artifact@v5
         with:
           path: dist
 
   deploy:
-    if: github.event_name == 'workflow_dispatch' && inputs.deploy
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.deploy)
     needs: check
     runs-on: ubuntu-latest
     permissions:

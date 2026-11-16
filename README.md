@@ -57,8 +57,10 @@ static web host; no server-side code is needed and it works in a sub-folder too 
 
 - **Netlify:** log in at app.netlify.com → "Add new site" → "Deploy manually" → drag the `dist` folder onto the page.
 - **GitHub Pages:** push this project to GitHub, then in the repository: Settings → Pages → Source:
-  "GitHub Actions". Then Actions tab → **Web** → "Run workflow" → tick **deploy** → Run.
-  The address is shown at the end of the run (e.g. `https://<you>.github.io/<repo>/`).
+  "GitHub Actions" (one-time setup). After that every push to `main` redeploys the site automatically
+  once the checks pass. To deploy another branch by hand: Actions tab → **Web** → "Run workflow" →
+  tick **deploy** → Run. The address is shown at the end of the run
+  (e.g. `https://<you>.github.io/<repo>/`).
 
 The site must be served over **https** (all the hosts above do this) for offline mode and installing to work.
 
