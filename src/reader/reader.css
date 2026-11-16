@@ -139,10 +139,15 @@
     color: var(--text);
   }
 }
+/* current word (page view and paused context view); colours per theme in theme.css (--hl-*).
+   Only paint changes: no padding or weight, so lines never reflow as it moves. The outer shadow
+   widens the fill a little without taking space. */
 .rd-ctx__w.is-current {
-  color: var(--text);
-  background: var(--accent-soft);
-  box-shadow: inset 0 -2px 0 var(--focus);
+  color: var(--hl-text);
+  background: var(--hl-bg);
+  box-shadow:
+    0 0 0 2px var(--hl-bg),
+    inset 0 -2px 0 var(--hl-mark);
 }
 .rd-ctx__more {
   text-align: center;
@@ -154,8 +159,6 @@
   flex: 1;
   min-height: 0;
   width: 100%;
-  max-width: 44rem;
-  margin-inline: auto;
   display: flex;
   flex-direction: column;
 }
@@ -179,7 +182,10 @@
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: var(--space-3) max(var(--gutter), env(safe-area-inset-left, 0px)) var(--space-6);
+  /* the scroll box spans the screen; the text is centred at the chosen line width (--rd-measure, set
+     from settings.pageWordsPerLine) or uses the whole width when the screen is narrower */
+  padding-block: var(--space-3) var(--space-6);
+  padding-inline: max(var(--gutter), env(safe-area-inset-left, 0px), calc((100% - var(--rd-measure, 36em)) / 2));
   font-family: var(--font-reader);
   font-size: var(--text-lg);
   line-height: 1.75;
@@ -197,11 +203,15 @@
 .rd-page__text .rd-ctx__w {
   transition: none;
 }
+/* the focus letter keeps the user's colour on the page's own background (a notch in the fill where
+   the fill is solid), so it stays as visible as in the word view whatever colour was picked */
 .rd-page__focus {
   color: var(--focus);
+  background: var(--hl-focus-bg);
 }
 ::highlight(rd-focus) {
   color: var(--focus);
+  background-color: var(--hl-focus-bg);
 }
 
 /* ---------- bottom controls ---------- */
@@ -550,6 +560,11 @@
 .rd-qs__group:first-of-type {
   border-top: none;
   padding-top: 0;
+}
+.rd-qs__hint {
+  margin-top: calc(-1 * var(--space-2));
+  font-size: var(--text-xs);
+  color: var(--text-muted);
 }
 .rd-qs__grid {
   display: grid;

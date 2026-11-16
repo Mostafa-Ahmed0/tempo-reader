@@ -4,6 +4,8 @@ import {
   DEFAULT_SETTINGS,
   FONT_SIZE_MAX,
   FONT_SIZE_MIN,
+  PAGE_WORDS_PER_LINE_MAX,
+  PAGE_WORDS_PER_LINE_MIN,
   PUNCTUATION_PAUSE_MAX,
   PUNCTUATION_PAUSE_MIN,
   WPM_MAX,
@@ -89,6 +91,7 @@ export default function SettingsPage() {
     goal: useId(),
     name: useId(),
     rewind: useId(),
+    pageWidth: useId(),
   };
 
   useEffect(() => {
@@ -277,6 +280,20 @@ export default function SettingsPage() {
           {s.fontFamily === 'dyslexic' ? <span className="set-row__help">Uses OpenDyslexic, Atkinson Hyperlegible or Lexend when installed on this device, otherwise Verdana.</span> : null}
         </div>
         <Slider label="Word size" value={s.fontSize} min={FONT_SIZE_MIN} max={FONT_SIZE_MAX} step={2} onChange={(v) => p({ fontSize: v })} format={(v) => `${v} px`} />
+        <div className="set-row set-row--stack">
+          <Slider
+            label="Page width"
+            value={s.pageWordsPerLine}
+            min={PAGE_WORDS_PER_LINE_MIN}
+            max={PAGE_WORDS_PER_LINE_MAX}
+            onChange={(v) => p({ pageWordsPerLine: v })}
+            format={(v) => `≈ ${v} words per line`}
+            aria-describedby={ids.pageWidth}
+          />
+          <span id={ids.pageWidth} className="set-row__help">
+            Line length in the reader's page view. Limited by the screen width on small screens (a phone fits about 6–9 words).
+          </span>
+        </div>
       </Section>
 
       <Section

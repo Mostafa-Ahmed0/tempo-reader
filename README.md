@@ -20,7 +20,9 @@ installed like an app from the browser (it then works offline), and can be built
   smart pauses at punctuation and paragraph ends, soft start, speed training (gradual speed-up),
   chapters, bookmarks, context view when paused, keyboard shortcuts, keeps the screen on while playing.
 - Page view: switch the reader (the Word | Page switch above the play button, or P) between one word at a time and the whole current page as
-  normal text, with the current word highlighted and moving as you read; tap any word to reread from there.
+  normal text, with the current word strongly highlighted and moving as you read; tap any word to reread from there.
+  The controls fade while playing (the first tap brings them back), and the line width is adjustable (about 6–40
+  words per line, limited by the screen).
 - Pages: the current page and page count in the reader and the library. PDFs show their real pages
   (page 50 in Tempo is page 50 of the PDF, with "go to page"); other formats an estimate of 275 words
   per page, marked "≈".

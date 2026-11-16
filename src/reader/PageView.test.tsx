@@ -1,7 +1,7 @@
-import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { addBook, db, getBook } from '../core/db';
-import { useSettings } from '../core/settings';
+import { PAGE_EM_PER_WORD, SETTINGS_STORAGE_KEY, useSettings } from '../core/settings';
 import { renderReaderAt } from './readerTestUtils';
 
 // 17 words on 4 "PDF" pages: page 1 = words 0–5, page 2 = 6–13, page 3 blank, page 4 = 14–16
@@ -19,6 +19,8 @@ async function seedPaged(position = 0) {
 const pageText = () => document.querySelector('.rd-page__text');
 const pageWords = () => Array.from(document.querySelectorAll('.rd-page__text [data-i]')).map((el) => el.textContent);
 const current = () => Array.from(document.querySelectorAll('.rd-page__text .is-current')).map((el) => el.textContent);
+const reader = () => document.querySelector('.rd-reader') as HTMLElement;
+const immersive = () => reader().classList.contains('rd-reader--immersive');
 const pageRadio = () => screen.getByRole('radio', { name: 'Page' });
 const wordRadio = () => screen.getByRole('radio', { name: 'Word' });
 
@@ -129,8 +131,74 @@ describe('page view', () => {
     const at = current();
     expect(at).toHaveLength(1);
     expect(pageWords()).toContain(at[0]);
-    // the chrome stays visible in the page view
-    expect(document.querySelector('.rd-reader--immersive')).toBeNull();
+  });
+
+  it('the chrome fades while playing, as in the word view, and returns on interaction and pause', async () => {
+    useSettings.getState().set({ wpm: 60 });
+    const book = await seedPaged(6);
+    await renderReaderAt(book.id);
+    fireEvent.click(pageRadio());
+    // the page bar is part of the chrome; the text itself is not
+    expect(document.querySelector('.rd-page__bar')?.classList.contains('rd-reader__chrome')).toBe(true);
+    expect(pageText()?.closest('.rd-reader__chrome')).toBeNull();
+    expect(immersive()).toBe(false);
+    fireEvent.keyDown(window, { key: ' ' });
+    await waitFor(() => expect(immersive()).toBe(true), { timeout: 3000 });
+    // mouse movement brings it back, and it fades again while still playing
+    fireEvent.pointerMove(reader(), { pointerType: 'mouse' });
+    expect(immersive()).toBe(false);
+    await waitFor(() => expect(immersive()).toBe(true), { timeout: 4000 });
+    // a key press brings it back
+    fireEvent.keyDown(window, { key: 'ArrowUp' });
+    expect(immersive()).toBe(false);
+    await waitFor(() => expect(immersive()).toBe(true), { timeout: 4000 });
+    // pausing brings it back for good
+    fireEvent.keyDown(window, { key: ' ' });
+    expect(screen.getByRole('button', { name: 'Play' })).toBeTruthy();
+    expect(immersive()).toBe(false);
+    await new Promise((r) => setTimeout(r, 1500));
+    expect(immersive()).toBe(false);
+  }, 15000);
+
+  it('while the chrome is hidden the first tap only shows it; with the chrome shown a tap jumps', async () => {
+    useSettings.getState().set({ wpm: 60 });
+    const book = await seedPaged(6);
+    await renderReaderAt(book.id);
+    fireEvent.click(pageRadio());
+    fireEvent.keyDown(window, { key: ' ' });
+    await waitFor(() => expect(immersive()).toBe(true), { timeout: 3000 });
+    const tap = (el: Element) => {
+      fireEvent.pointerDown(el, { pointerType: 'touch' });
+      fireEvent.click(el);
+    };
+    tap(screen.getByText('paragraph'));
+    expect(immersive()).toBe(false);
+    expect(current()).not.toEqual(['paragraph']);
+    expect(screen.getByRole('button', { name: 'Pause' })).toBeTruthy(); // still playing
+    tap(screen.getByText('paragraph'));
+    expect(current()).toEqual(['paragraph']);
+    fireEvent.keyDown(window, { key: ' ' });
+  }, 10000);
+
+  it('page width: words per line set the centred max line width, live, from the reading settings', async () => {
+    const book = await seedPaged();
+    await renderReaderAt(book.id);
+    fireEvent.click(pageRadio());
+    const measure = () => (pageText() as HTMLElement).style.getPropertyValue('--rd-measure');
+    expect(useSettings.getState().pageWordsPerLine).toBe(12);
+    expect(measure()).toBe(`${12 * PAGE_EM_PER_WORD}em`);
+    act(() => useSettings.getState().set({ pageWordsPerLine: 20 }));
+    expect(measure()).toBe('60em');
+
+    fireEvent.keyDown(window, { key: 's' });
+    const dialog = screen.getByRole('dialog', { name: 'Reading settings' });
+    const slider = within(dialog).getByRole('slider', { name: 'Page width' });
+    expect(slider.getAttribute('aria-valuetext')).toBe('≈ 20 words per line');
+    expect(within(dialog).getByText(/Limited by the screen/)).toBeTruthy();
+    fireEvent.change(slider, { target: { value: '30' } });
+    expect(useSettings.getState().pageWordsPerLine).toBe(30);
+    expect(measure()).toBe('90em');
+    expect(JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) ?? '{}').state.pageWordsPerLine).toBe(30);
   });
 
   it('switching views while playing keeps playing at the same position', async () => {

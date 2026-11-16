@@ -172,8 +172,6 @@ export function Reader({ book, tok }: { book: Book; tok: TokenizedBook }) {
   // Not persisted: every book opens in the word view. Switching never touches the engine, so the
   // position and play/pause state carry over unchanged (playback simply continues in the other view).
   const [view, setView] = useState<ReaderView>('word');
-  const viewRef = useRef(view);
-  viewRef.current = view;
   const toggleView = useCallback(() => setView((v) => (v === 'word' ? 'page' : 'word')), []);
   const prevPage = useCallback(() => {
     const p = prevPageStart(pages, engine.position);
@@ -200,8 +198,7 @@ export function Reader({ book, tok }: { book: Book; tok: TokenizedBook }) {
     (ms: number) => {
       clearTimeout(hideTimer.current);
       hideTimer.current = setTimeout(() => {
-        // the page view is for looking around: its controls never fade
-        if (engine.getState().playing && !sheetRef.current && viewRef.current === 'word') setChromeHidden(true);
+        if (engine.getState().playing && !sheetRef.current) setChromeHidden(true);
       }, ms);
     },
     [engine],
@@ -211,13 +208,22 @@ export function Reader({ book, tok }: { book: Book; tok: TokenizedBook }) {
     if (engine.getState().playing) scheduleHide(HIDE_CHROME_AFTER_POKE_MS);
   }, [engine, scheduleHide]);
   useEffect(() => {
-    if (state.playing && view === 'word') scheduleHide(HIDE_CHROME_AFTER_PLAY_MS);
+    if (state.playing) scheduleHide(HIDE_CHROME_AFTER_PLAY_MS);
     else {
       clearTimeout(hideTimer.current);
       setChromeHidden(false);
     }
-  }, [state.playing, view, scheduleHide]);
+  }, [state.playing, scheduleHide]);
   useEffect(() => () => clearTimeout(hideTimer.current), []);
+  // Page view: a tap while the chrome is hidden only brings it back; it does not jump to the tapped word
+  // (the word view's tap pauses instead, which also shows the chrome). Set on pointerdown, before poke().
+  const tapRevealsOnly = useRef(false);
+  const seekFromPage = useCallback(
+    (i: number) => {
+      if (!tapRevealsOnly.current) engine.seek(i);
+    },
+    [engine],
+  );
 
   // ---------------------------------------------------------------- keyboard
   useEffect(() => {
@@ -316,7 +322,10 @@ export function Reader({ book, tok }: { book: Book; tok: TokenizedBook }) {
       onPointerMove={(e) => {
         if (e.pointerType === 'mouse') poke();
       }}
-      onPointerDown={poke}
+      onPointerDown={() => {
+        tapRevealsOnly.current = chromeHidden;
+        poke();
+      }}
     >
       <header className="rd-reader__top rd-reader__chrome">
         <IconButton icon="chevron-left" label="Back to library" onClick={exit} />
@@ -358,7 +367,7 @@ export function Reader({ book, tok }: { book: Book; tok: TokenizedBook }) {
         {state.finished ? (
           <Completion summary={summary} title={book.title} total={engine.total} onLibrary={exit} onRestart={restart} />
         ) : pageView ? (
-          <PageView engine={engine} tok={tok} pages={pages} dir={dir} />
+          <PageView engine={engine} tok={tok} pages={pages} dir={dir} onSeek={seekFromPage} />
         ) : showingContext ? (
           <ContextView engine={engine} tok={tok} dir={dir} onSeek={(i) => engine.seek(i)} />
         ) : (

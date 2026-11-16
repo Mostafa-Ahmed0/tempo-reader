@@ -4,6 +4,8 @@ import { formatPage, pageAt, pageStartIndex, type PageMap } from '../core/pages'
 import {
   FONT_SIZE_MAX,
   FONT_SIZE_MIN,
+  PAGE_WORDS_PER_LINE_MAX,
+  PAGE_WORDS_PER_LINE_MIN,
   PUNCTUATION_PAUSE_MAX,
   PUNCTUATION_PAUSE_MIN,
   WPM_MAX,
@@ -20,6 +22,7 @@ import { Button, IconButton, Modal, Slider, Toggle, toast } from '../ui';
 import { chapterIndexAt } from './Controls';
 import type { ReaderEngine } from './engine';
 import { floorValue } from './pacing';
+import { pageLineFit } from './PageView';
 import { WordDisplay } from './WordDisplay';
 
 // ---------------------------------------------------------------- small form pieces
@@ -102,6 +105,8 @@ const COLOR_PRESETS = [
 export function QuickSettings({ open, onClose, previewText }: { open: boolean; onClose: () => void; previewText: string }) {
   const s = useSettings();
   const set = (patch: Partial<Settings>) => s.set(patch);
+  // measured on the open page view (null in the word view): the screen may fit fewer words than chosen
+  const lineFit = open ? pageLineFit() : null;
   const isPreset = COLOR_PRESETS.some((c) => c.value.toLowerCase() === s.highlightColor.toLowerCase());
 
   return (
@@ -167,6 +172,23 @@ export function QuickSettings({ open, onClose, previewText }: { open: boolean; o
             { value: 3, label: '3' },
           ]}
         />
+      </section>
+
+      <section className="rd-qs__group" aria-label="Page view">
+        <Slider
+          label="Page width"
+          value={s.pageWordsPerLine}
+          min={PAGE_WORDS_PER_LINE_MIN}
+          max={PAGE_WORDS_PER_LINE_MAX}
+          format={(v) => `≈ ${v} words per line`}
+          onChange={(v) => set({ pageWordsPerLine: v })}
+          aria-describedby="rd-qs-width-hint"
+        />
+        <p id="rd-qs-width-hint" className="rd-qs__hint">
+          {lineFit !== null && lineFit < s.pageWordsPerLine
+            ? `Limited by the screen: about ${lineFit} words fit on a line here, so the page uses the full width.`
+            : 'Page view line length. Limited by the screen width on small screens.'}
+        </p>
       </section>
 
       <section className="rd-qs__group" aria-label="Pacing">

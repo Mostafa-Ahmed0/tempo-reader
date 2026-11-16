@@ -28,6 +28,7 @@ export interface Settings {
   keepAwake: boolean; // default true (screen wake lock while playing)
   dailyGoalMinutes: number; // default 15
   userName: string; // default '': optional, only for the greeting on Home; stays on this device (and in backups)
+  pageWordsPerLine: number; // page view line width as approximate words per line, default 12, range 6–40
 }
 
 export const WPM_MIN = 60;
@@ -36,6 +37,16 @@ export const FONT_SIZE_MIN = 24;
 export const FONT_SIZE_MAX = 96;
 export const PUNCTUATION_PAUSE_MIN = 1;
 export const PUNCTUATION_PAUSE_MAX = 4;
+export const PAGE_WORDS_PER_LINE_MIN = 6;
+export const PAGE_WORDS_PER_LINE_MAX = 40;
+/**
+ * Width of one average word in the page view, in em: about 6 characters including the following space,
+ * at about 0.5 em per character of running text (`ch`, the width of "0", is wider than an average
+ * letter in proportional fonts and would give noticeably more words per line than the setting says).
+ */
+export const PAGE_EM_PER_WORD = 3;
+/** CSS max line width of the page view for `wordsPerLine` (the screen may be narrower: then it is the screen). */
+export const pageMeasure = (wordsPerLine: number) => `${wordsPerLine * PAGE_EM_PER_WORD}em`;
 export const SETTINGS_STORAGE_KEY = 'tempo-settings';
 
 export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({
@@ -60,6 +71,7 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({
   keepAwake: true,
   dailyGoalMinutes: 15,
   userName: '',
+  pageWordsPerLine: 12,
 });
 
 export const USER_NAME_MAX = 40;
@@ -104,6 +116,7 @@ export function sanitizeSettings(patch: unknown): Partial<Settings> {
   if (s.rampStepWpm !== undefined) s.rampStepWpm = Math.round(clamp(s.rampStepWpm, 1, 500));
   if (s.rampIntervalSec !== undefined) s.rampIntervalSec = Math.round(clamp(s.rampIntervalSec, 5, 3600));
   if (s.dailyGoalMinutes !== undefined) s.dailyGoalMinutes = Math.round(clamp(s.dailyGoalMinutes, 0, 600));
+  if (s.pageWordsPerLine !== undefined) s.pageWordsPerLine = Math.round(clamp(s.pageWordsPerLine, PAGE_WORDS_PER_LINE_MIN, PAGE_WORDS_PER_LINE_MAX));
   // not trimmed here (that would eat the space while typing "Anna M"); the greeting trims
   if (s.userName !== undefined) s.userName = s.userName.replace(/[\u0000-\u001f\u007f]/g, '').slice(0, USER_NAME_MAX);
   return s;

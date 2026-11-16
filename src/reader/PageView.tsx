@@ -1,6 +1,6 @@
-import { memo, useLayoutEffect, useMemo, useRef } from 'react';
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, type CSSProperties } from 'react';
 import { formatPageOf, nextPageStart, pageAccessibleLabel, pageAt, pageRange, prevPageStart, type PageMap } from '../core/pages';
-import { useSettings } from '../core/settings';
+import { pageMeasure, useSettings } from '../core/settings';
 import type { TokenizedBook } from '../core/types';
 import { renderWords, textBlocks } from './Controls';
 import type { Frame, ReaderEngine } from './engine';
@@ -94,6 +94,8 @@ function keepInView(box: HTMLElement, el: HTMLElement, instant: boolean) {
 /** Rough duration of a browser smooth scroll; no new one is started for the same box meanwhile. */
 const SMOOTH_MS = 450;
 const smoothUntil = new WeakMap<HTMLElement, number>();
+/** After the reader scrolls the page by hand, auto-scroll leaves it alone for this long. */
+export const MANUAL_SCROLL_HOLD_MS = 2500;
 
 /**
  * Page view: the whole current page (same pages as the page indicator) as flowing text, with the current
@@ -105,17 +107,51 @@ export const PageView = memo(function PageView({
   tok,
   pages,
   dir,
+  onSeek,
 }: {
   engine: ReaderEngine;
   tok: TokenizedBook;
   pages: PageMap;
   dir: 'ltr' | 'rtl';
+  /** A word was tapped (the reader decides whether that jumps). */
+  onSeek: (index: number) => void;
 }) {
   const total = engine.total;
   const page = useFrameSelector(engine, (f) => pageAt(pages, Math.min(f.index, Math.max(0, total - 1))));
   const [from, to] = pageRange(pages, page, total);
   const mode = useSettings((s) => s.highlightMode);
+  const wordsPerLine = useSettings((s) => s.pageWordsPerLine);
   const boxRef = useRef<HTMLDivElement>(null);
+  // until when auto-scroll holds back because the reader scrolled by hand (wheel, touch, scrollbar drag)
+  const manualUntil = useRef(0);
+
+  useEffect(() => {
+    const box = boxRef.current;
+    if (!box) return;
+    let dragging = false;
+    const hold = () => (manualUntil.current = performance.now() + MANUAL_SCROLL_HOLD_MS);
+    const onDown = (e: PointerEvent) => {
+      if (e.target === box) dragging = true; // on the box itself, not a word: its scrollbar
+    };
+    const onUp = () => (dragging = false);
+    const onScroll = () => {
+      if (dragging) hold();
+    };
+    box.addEventListener('wheel', hold, { passive: true });
+    box.addEventListener('touchmove', hold, { passive: true });
+    box.addEventListener('pointerdown', onDown);
+    box.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+    return () => {
+      box.removeEventListener('wheel', hold);
+      box.removeEventListener('touchmove', hold);
+      box.removeEventListener('pointerdown', onDown);
+      box.removeEventListener('scroll', onScroll);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+    };
+  }, []);
 
   const body = useMemo(
     () =>
@@ -161,7 +197,7 @@ export const PageView = memo(function PageView({
       const focus = frameFocusInWords(engine.words, f.index, f.count, mode);
       const fe = focus && focus.word >= from && focus.word < to ? spans[focus.word - from] : undefined;
       if (focus && fe) undoFocus = markFocus(fe, focus.letters, hl);
-      keepInView(box, marked[0], first);
+      if (first || performance.now() >= manualUntil.current) keepInView(box, marked[0], first);
       first = false;
     };
     apply(engine.getFrame());
@@ -178,7 +214,8 @@ export const PageView = memo(function PageView({
 
   return (
     <section className="rd-page" aria-label={`Page view, ${pageAccessibleLabel(pages, from)}`}>
-      <div className="rd-page__bar">
+      {/* part of the reader's chrome: fades with it while playing */}
+      <div className="rd-page__bar rd-reader__chrome">
         <button
           type="button"
           className="btn btn--ghost btn--sm btn--icon"
@@ -205,9 +242,10 @@ export const PageView = memo(function PageView({
         ref={boxRef}
         className="rd-page__text"
         dir={dir}
+        style={{ '--rd-measure': pageMeasure(wordsPerLine) } as CSSProperties}
         onClick={(e) => {
           const t = (e.target as HTMLElement).closest<HTMLElement>('[data-i]');
-          if (t) engine.seek(Number(t.dataset.i));
+          if (t) onSeek(Number(t.dataset.i));
         }}
       >
         {body}
@@ -215,3 +253,21 @@ export const PageView = memo(function PageView({
     </section>
   );
 });
+
+/**
+ * About how many words fit on one line of the page view on this screen right now (the box width minus
+ * the side gutters, in average words of the page font, see PAGE_EM_PER_WORD), or null when the page view
+ * is not on screen. Lets the settings say honestly when the screen, not the setting, limits the width.
+ */
+export function pageLineFit(): number | null {
+  const box = document.querySelector<HTMLElement>('.rd-page__text');
+  if (!box) return null;
+  const probe = document.createElement('span');
+  probe.style.cssText = `position:absolute;visibility:hidden;width:${pageMeasure(1)}`;
+  box.append(probe);
+  const wordPx = probe.getBoundingClientRect().width;
+  probe.remove();
+  const gutter = 2 * Number.parseFloat(getComputedStyle(box).getPropertyValue('--gutter') || '16');
+  const room = box.clientWidth - (Number.isFinite(gutter) ? gutter : 32);
+  return wordPx > 0 && room > 0 ? Math.max(1, Math.floor(room / wordPx)) : null;
+}

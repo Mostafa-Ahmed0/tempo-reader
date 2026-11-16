@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY, USER_NAME_MAX, WPM_MAX, WPM_MIN, sanitizeSettings, useSettings } from './settings';
+import { DEFAULT_SETTINGS, PAGE_WORDS_PER_LINE_MAX, PAGE_WORDS_PER_LINE_MIN, SETTINGS_STORAGE_KEY, pageMeasure, USER_NAME_MAX, WPM_MAX, WPM_MIN, sanitizeSettings, useSettings } from './settings';
 
 beforeEach(() => {
   useSettings.getState().reset();
@@ -48,5 +48,25 @@ describe('settings store', () => {
     expect(sanitizeSettings({ userName: 'An\nna\u0007' })).toEqual({ userName: 'Anna' });
     expect(sanitizeSettings({ userName: 'x'.repeat(100) }).userName).toHaveLength(USER_NAME_MAX);
     expect(sanitizeSettings({ userName: 42 })).toEqual({});
+  });
+
+  it('pageWordsPerLine: default 12, clamped to 6–40, 3 em (about 6 characters) per word', () => {
+    expect(DEFAULT_SETTINGS.pageWordsPerLine).toBe(12);
+    expect([PAGE_WORDS_PER_LINE_MIN, PAGE_WORDS_PER_LINE_MAX]).toEqual([6, 40]);
+    expect(sanitizeSettings({ pageWordsPerLine: 2 })).toEqual({ pageWordsPerLine: 6 });
+    expect(sanitizeSettings({ pageWordsPerLine: 99 })).toEqual({ pageWordsPerLine: 40 });
+    expect(sanitizeSettings({ pageWordsPerLine: 17.6 })).toEqual({ pageWordsPerLine: 18 });
+    expect(sanitizeSettings({ pageWordsPerLine: '20' })).toEqual({});
+    expect(pageMeasure(12)).toBe('36em');
+  });
+
+  it('settings stored before pageWordsPerLine existed get its default; a stored value is kept', async () => {
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ state: { wpm: 410, theme: 'black' }, version: 1 }));
+    await useSettings.persist.rehydrate();
+    expect(useSettings.getState().wpm).toBe(410);
+    expect(useSettings.getState().pageWordsPerLine).toBe(12);
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ state: { pageWordsPerLine: 25 }, version: 1 }));
+    await useSettings.persist.rehydrate();
+    expect(useSettings.getState().pageWordsPerLine).toBe(25);
   });
 });
