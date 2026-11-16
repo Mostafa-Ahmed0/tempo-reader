@@ -61,6 +61,16 @@ export function msByDay(sessions: readonly ReadingSession[]): Map<DayKey, number
   return out;
 }
 
+/** "0 min", "<1 min", "25 min", "1 h 5 min", "2 h". */
+export const formatMinutes = (m: number) => {
+  if (m <= 0) return '0 min';
+  if (m < 1) return '<1 min';
+  if (m < 60) return `${Math.round(m)} min`;
+  const h = Math.floor(m / 60);
+  const r = Math.round(m % 60);
+  return r ? `${h} h ${r} min` : `${h} h`;
+};
+
 export function todayMs(sessions: readonly ReadingSession[], now: number): number {
   return msByDay(sessions).get(dayKey(now)) ?? 0;
 }

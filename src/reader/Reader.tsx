@@ -13,6 +13,7 @@ import { ReaderEngine, type EngineOptions } from './engine';
 import { dominantDirection } from './frameLayout';
 import { useEngineState, useWakeLock } from './hooks';
 import { PageView } from './PageView';
+import { ViewSwitch } from './ViewSwitch';
 import { ReaderIcon } from './ReaderIcon';
 import { BookmarksSheet, ChaptersSheet, createBookmark, QuickSettings, ShortcutsHelp } from './Sheets';
 
@@ -323,17 +324,8 @@ export function Reader({ book, tok }: { book: Book; tok: TokenizedBook }) {
           <span className="rd-reader__book">{book.title}</span>
           {book.author ? <span className="rd-reader__author">{book.author}</span> : null}
         </div>
-        <button
-          type="button"
-          className="btn btn--ghost btn--md btn--icon rd-reader__view"
-          aria-label="Page view"
-          aria-pressed={view === 'page'}
-          title={view === 'page' ? 'Back to word view (P)' : 'Page view (P)'}
-          onClick={toggleView}
-        >
-          <ReaderIcon name={view === 'page' ? 'word-view' : 'page-view'} />
-        </button>
-        <button type="button" className="btn btn--ghost btn--md btn--icon" aria-label="Add bookmark here" title="Add bookmark (B)" onClick={() => void addBookmarkHere()}>
+        {/* narrow phones: the Bookmarks sheet has "Bookmark this spot", so the title gets the room */}
+        <button type="button" className="btn btn--ghost btn--md btn--icon rd-reader__wide-only" aria-label="Add bookmark here" title="Add bookmark (B)" onClick={() => void addBookmarkHere()}>
           <ReaderIcon name="bookmark-plus" />
         </button>
         <button type="button" className="btn btn--ghost btn--md btn--icon" aria-label="Bookmarks" title="Bookmarks" onClick={() => openSheet('bookmarks')}>
@@ -378,6 +370,7 @@ export function Reader({ book, tok }: { book: Book; tok: TokenizedBook }) {
       <footer className="rd-reader__bottom rd-reader__chrome">
         <Scrubber engine={engine} tok={tok} />
         <ProgressStats engine={engine} tok={tok} pages={pages} />
+        <ViewSwitch view={view} onChange={setView} />
         <div className="rd-reader__transport">
           <button type="button" className="btn btn--ghost btn--md btn--icon" aria-label="Previous paragraph" title="Previous paragraph (Shift+←)" onClick={() => engine.prevParagraph()}>
             <ReaderIcon name="para-back" />

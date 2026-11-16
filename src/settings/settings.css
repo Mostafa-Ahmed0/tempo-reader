@@ -153,6 +153,17 @@
   display: flex;
   gap: var(--space-2);
 }
+.set-name {
+  width: min(220px, 100%);
+}
+@media (max-width: 480px) {
+  .set-row__control:has(> .set-name) {
+    flex: 1 1 100%;
+  }
+  .set-name {
+    width: 100%;
+  }
+}
 .tm-is-dim {
   opacity: 0.55;
 }

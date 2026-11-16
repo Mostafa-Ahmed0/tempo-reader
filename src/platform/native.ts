@@ -16,6 +16,7 @@ import type { SaveResult } from './saveFile';
 export interface NativeRouter {
   pathname: () => string;
   navigateToLibrary: () => void;
+  navigateHome: () => void;
 }
 
 export async function initBackButton(router: NativeRouter): Promise<PluginListenerHandle> {
@@ -24,6 +25,7 @@ export async function initBackButton(router: NativeRouter): Promise<PluginListen
     handleBack({
       pathname: router.pathname(),
       navigateToLibrary: router.navigateToLibrary,
+      navigateHome: router.navigateHome,
       exitApp: () => void App.exitApp(),
     });
   });

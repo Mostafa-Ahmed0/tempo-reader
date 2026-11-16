@@ -27,6 +27,7 @@ export interface Settings {
   softStart: boolean; // default true: ease up to full speed over the first few words after pressing play
   keepAwake: boolean; // default true (screen wake lock while playing)
   dailyGoalMinutes: number; // default 15
+  userName: string; // default '': optional, only for the greeting on Home; stays on this device (and in backups)
 }
 
 export const WPM_MIN = 60;
@@ -58,7 +59,10 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({
   softStart: true,
   keepAwake: true,
   dailyGoalMinutes: 15,
+  userName: '',
 });
+
+export const USER_NAME_MAX = 40;
 
 const SETTING_KEYS = Object.keys(DEFAULT_SETTINGS) as (keyof Settings)[];
 
@@ -100,6 +104,8 @@ export function sanitizeSettings(patch: unknown): Partial<Settings> {
   if (s.rampStepWpm !== undefined) s.rampStepWpm = Math.round(clamp(s.rampStepWpm, 1, 500));
   if (s.rampIntervalSec !== undefined) s.rampIntervalSec = Math.round(clamp(s.rampIntervalSec, 5, 3600));
   if (s.dailyGoalMinutes !== undefined) s.dailyGoalMinutes = Math.round(clamp(s.dailyGoalMinutes, 0, 600));
+  // not trimmed here (that would eat the space while typing "Anna M"); the greeting trims
+  if (s.userName !== undefined) s.userName = s.userName.replace(/[\u0000-\u001f\u007f]/g, '').slice(0, USER_NAME_MAX);
   return s;
 }
 

@@ -71,6 +71,7 @@ export function PlatformBridge() {
         await n.initBackButton({
           pathname: () => pathRef.current,
           navigateToLibrary: () => navRef.current(ROUTES.library),
+          navigateHome: () => navRef.current(ROUTES.home),
         }),
       );
       const h = await n.initIncomingFiles();

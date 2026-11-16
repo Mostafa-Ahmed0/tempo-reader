@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY, WPM_MAX, WPM_MIN, sanitizeSettings, useSettings } from './settings';
+import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY, USER_NAME_MAX, WPM_MAX, WPM_MIN, sanitizeSettings, useSettings } from './settings';
 
 beforeEach(() => {
   useSettings.getState().reset();
@@ -40,5 +40,13 @@ describe('settings store', () => {
   it('sanitizeSettings drops unknown keys and wrong types', () => {
     expect(sanitizeSettings({ wpm: '400', bogus: 1, chunkSize: 5, theme: 'neon', keepAwake: false })).toEqual({ keepAwake: false });
     expect(sanitizeSettings(null)).toEqual({});
+  });
+
+  it('userName: optional, control characters removed, capped, spaces kept while typing', () => {
+    expect(DEFAULT_SETTINGS.userName).toBe('');
+    expect(sanitizeSettings({ userName: 'Anna ' })).toEqual({ userName: 'Anna ' });
+    expect(sanitizeSettings({ userName: 'An\nna\u0007' })).toEqual({ userName: 'Anna' });
+    expect(sanitizeSettings({ userName: 'x'.repeat(100) }).userName).toHaveLength(USER_NAME_MAX);
+    expect(sanitizeSettings({ userName: 42 })).toEqual({});
   });
 });

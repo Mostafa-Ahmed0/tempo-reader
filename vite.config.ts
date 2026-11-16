@@ -51,6 +51,11 @@ export default defineConfig({
           { src: 'icons/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           { src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
         ],
+        // Long-press / right-click on the app icon. start_url is Home; these jump straight in.
+        shortcuts: [
+          { name: 'Library', short_name: 'Library', url: './#/library', icons: [{ src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' }] },
+          { name: 'Stats', short_name: 'Stats', url: './#/stats', icons: [{ src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' }] },
+        ],
         // Desktop Chromium: "Open with → Tempo" for book files; handled in src/platform/webLaunch.ts.
         file_handlers: [{ action: './', accept: FILE_TYPES }],
         launch_handler: { client_mode: ['focus-existing', 'auto'] },

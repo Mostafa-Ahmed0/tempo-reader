@@ -3,8 +3,8 @@
  *  1. a handler registered with registerBackHandler() (newest first) that returns true;
  *  2. an open modal/sheet ([role="dialog"]) → closed via the Escape key the Modal already handles;
  *  3. reader route → pause if playing, else leave to the library (the reader's own Escape shortcut);
- *  4. another tab page (stats, settings) → the library;
- *  5. the library → exit the app.
+ *  4. another tab page (library, stats, settings) → Home;
+ *  5. Home (the root) → exit the app.
  * Pure DOM/router logic, unit-tested in backButton.test.ts; native.ts connects it to @capacitor/app.
  */
 
@@ -25,12 +25,15 @@ export function registerBackHandler(handler: BackHandler): () => void {
 
 export interface BackContext {
   pathname: string;
+  /** The reader's fallback exit (its own "Back to library"). */
   navigateToLibrary: () => void;
+  /** Tab pages other than Home go back to Home. */
+  navigateHome: () => void;
   exitApp: () => void;
   doc?: Document;
 }
 
-export type BackAction = 'handler' | 'dialog' | 'pause' | 'reader-exit' | 'library' | 'exit';
+export type BackAction = 'handler' | 'dialog' | 'pause' | 'reader-exit' | 'home' | 'exit';
 
 export function handleBack(ctx: BackContext): BackAction {
   const doc = ctx.doc ?? document;
@@ -64,8 +67,8 @@ export function handleBack(ctx: BackContext): BackAction {
   }
 
   if (ctx.pathname !== '/' && ctx.pathname !== '') {
-    ctx.navigateToLibrary();
-    return 'library';
+    ctx.navigateHome();
+    return 'home';
   }
   ctx.exitApp();
   return 'exit';

@@ -23,7 +23,7 @@ async function openReader() {
 }
 
 const back = () => {
-  const ctx = { pathname: '/read/x', navigateToLibrary: vi.fn(), exitApp: vi.fn() };
+  const ctx = { pathname: '/read/x', navigateToLibrary: vi.fn(), navigateHome: vi.fn(), exitApp: vi.fn() };
   let action = '';
   act(() => {
     action = handleBack(ctx);

@@ -7,6 +7,7 @@ import {
   PUNCTUATION_PAUSE_MAX,
   PUNCTUATION_PAUSE_MIN,
   WPM_MAX,
+  USER_NAME_MAX,
   WPM_MIN,
   useSettings,
   type FontFamily,
@@ -86,6 +87,7 @@ export default function SettingsPage() {
     rampStep: useId(),
     rampInterval: useId(),
     goal: useId(),
+    name: useId(),
     rewind: useId(),
   };
 
@@ -335,7 +337,20 @@ export default function SettingsPage() {
       </Section>
 
       <Section id="habits" title="Habits">
-        <Row label="Daily goal" htmlFor={ids.goal} help="Minutes of reading per day, shown as a ring on the Stats page. 0 turns the goal off.">
+        <Row label="Your name" htmlFor={ids.name} help="Optional. Used only for the greeting on Home and stays on this device.">
+          <input
+            id={ids.name}
+            className="tm-input set-name"
+            value={s.userName}
+            onChange={(e) => p({ userName: e.target.value })}
+            placeholder="Name"
+            maxLength={USER_NAME_MAX}
+            autoComplete="given-name"
+            enterKeyHint="done"
+            spellCheck={false}
+          />
+        </Row>
+        <Row label="Daily goal" htmlFor={ids.goal} help="Minutes of reading per day, shown as a ring on Home and the Stats page. 0 turns the goal off.">
           <NumberField id={ids.goal} value={s.dailyGoalMinutes} min={0} max={600} unit="min" onCommit={(v) => p({ dailyGoalMinutes: v })} />
         </Row>
         <Toggle label="Keep screen awake" description="Stops the screen from dimming while words are playing." checked={s.keepAwake} onChange={(v) => p({ keepAwake: v })} />

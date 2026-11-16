@@ -1,31 +1,33 @@
 import { useCallback, useDeferredValue, useEffect, useId, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ROUTES } from '../app/routes';
-import { addBook, listBooks, updateBook, useLiveBooks } from '../core/db';
+import { updateBook, useLiveBooks } from '../core/db';
 import { useSettings } from '../core/settings';
 import type { Book } from '../core/types';
 import { Icon, IconButton, PageHeader, toast } from '../ui';
-import { BookCover } from './BookCover';
-import { BookItem, pagesLabel, progressLabel, timeLeftLabel } from './BookItem';
+import { BookItem } from './BookItem';
 import { BookMenu } from './BookMenu';
-import { DropOverlay, FormatsButton, ImportPanel, PasteModal, SupportedFormatsLine } from './ImportParts';
+import { AddBooksModal, DropOverlay, ImportPanel, PasteModal, SupportedFormatsLine } from './ImportParts';
 import { loadParsers, useImports } from './importer';
 import {
   BUILTIN_FILTERS,
   SORT_OPTIONS,
   allTags as collectTags,
-  bookProgress,
-  continueReading,
   matchesFilter,
   selectBooks,
   type FilterKey,
   type SortKey,
 } from './logic';
 import { useLibraryPrefs } from './prefs';
-import { SAMPLE_FILE_NAME, findSample, sampleBook } from './sample';
+import { useOpenSample } from './useOpenSample';
 import { XIcon } from './XIcon';
 import './controls.css';
 import './library.css';
+
+/** Navigation state: `navigate(ROUTES.library, { state: { add: true } })` opens the Add window. */
+export interface LibraryLocationState {
+  add?: boolean;
+}
 
 function hasFiles(e: DragEvent): boolean {
   return !!e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files');
@@ -41,6 +43,17 @@ export default function LibraryPage() {
   const [pasteOpen, setPasteOpen] = useState(false);
   const [menuId, setMenuId] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+
+  // Home's "Add books" lands here with { add: true }: open the Add window once, then forget the flag
+  // (so Back / a reload does not open it again).
+  const location = useLocation();
+  useEffect(() => {
+    if ((location.state as LibraryLocationState | null)?.add) {
+      setAddOpen(true);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.state, location.pathname, navigate]);
 
   const offerReadNow = useCallback(
     (book: Book) => {
@@ -56,6 +69,8 @@ export default function LibraryPage() {
   const importFiles = useCallback(
     (files: File[]) => {
       if (!files.length) return;
+      // the Add window steps aside: the import panel at the top of the library shows the progress
+      setAddOpen(false);
       enqueue(files, (added) => {
         if (files.length === 1 && added.length === 1) offerReadNow(added[0]);
         else if (added.length > 1) toast(`Added ${added.length} books`, { kind: 'success' });
@@ -117,6 +132,12 @@ export default function LibraryPage() {
     };
     const drop = (e: DragEvent) => {
       if (!hasFiles(e)) return;
+      // the Add window's drop zone already took it
+      if (e.defaultPrevented) {
+        depth = 0;
+        setDragging(false);
+        return;
+      }
       e.preventDefault();
       depth = 0;
       setDragging(false);
@@ -134,21 +155,7 @@ export default function LibraryPage() {
     };
   }, [importFiles, prefetch]);
 
-  const sampleBusy = useRef(false);
-  const trySample = async () => {
-    if (sampleBusy.current) return; // double taps must not add it twice
-    sampleBusy.current = true;
-    try {
-      // already in the library? open it instead of adding a second copy
-      const existing = findSample(await listBooks());
-      const id = existing?.id ?? (await addBook(sampleBook(), { name: SAMPLE_FILE_NAME, size: 0, format: 'txt' })).id;
-      navigate(ROUTES.read(id));
-    } catch (err) {
-      toast(err instanceof Error ? err.message : 'Could not add the sample', { kind: 'error' });
-    } finally {
-      sampleBusy.current = false;
-    }
-  };
+  const trySample = useOpenSample();
 
   const tags = useMemo(() => collectTags(books ?? []), [books]);
   const menuBook = (menuId && books?.find((b) => b.id === menuId)) || null;
@@ -168,10 +175,11 @@ export default function LibraryPage() {
         type="button"
         className="btn btn--primary btn--md"
         data-focus-fallback
-        onClick={openPicker}
+        onClick={() => setAddOpen(true)}
         onPointerEnter={prefetch}
         onFocus={prefetch}
         onPointerDown={prefetch}
+        aria-haspopup="dialog"
       >
         <Icon name="plus" size={18} />
         Add
@@ -188,10 +196,7 @@ export default function LibraryPage() {
             ' '
           ) : count ? (
             <>
-              {`${count} ${count === 1 ? 'book' : 'books'}`}
-              <span aria-hidden="true"> · </span>
-              <FormatsButton />
-            </>
+{`${count} ${count === 1 ? 'book' : 'books'}`}</>
           ) : (
             'Your books, documents and pasted texts.'
           )
@@ -202,14 +207,26 @@ export default function LibraryPage() {
       <ImportPanel />
 
       {books === undefined ? null : count === 0 ? (
-        <Welcome onAdd={openPicker} onPaste={() => setPasteOpen(true)} onSample={trySample} onIntent={prefetch} />
+        <Welcome onAdd={() => setAddOpen(true)} onPaste={() => setPasteOpen(true)} onSample={trySample} onIntent={prefetch} />
       ) : (
         <Shelf books={books} tags={tags} wpm={wpm} onMore={onMore} onToggleFavorite={onToggleFavorite} />
       )}
 
       <PasteModal open={pasteOpen} onClose={() => setPasteOpen(false)} onAdded={offerReadNow} />
       <BookMenu book={menuBook} allTags={tags} onClose={() => setMenuId(null)} />
-      <DropOverlay visible={dragging} />
+      <AddBooksModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onFiles={importFiles}
+        onChoose={() => void openPicker()}
+        onPaste={() => {
+          setAddOpen(false);
+          setPasteOpen(true);
+        }}
+        onIntent={prefetch}
+      />
+      {/* with the Add window open, its own drop zone gives the feedback */}
+      <DropOverlay visible={dragging && !addOpen} />
     </div>
   );
 }
@@ -257,51 +274,6 @@ function Welcome({ onAdd, onPaste, onSample, onIntent }: { onAdd: () => void; on
 
 // ---------------------------------------------------------------------------
 
-function ContinueCard({ book, wpm }: { book: Book; wpm: number }) {
-  const progress = bookProgress(book);
-  return (
-    <section className="continue" aria-labelledby="continue-title">
-      <Link to={ROUTES.read(book.id)} className="continue__cover" tabIndex={-1} aria-hidden="true">
-        <BookCover bookId={book.id} title={book.title} author={book.author} cover={book.cover} />
-      </Link>
-      <div className="continue__body">
-        <p className="continue__eyebrow">Continue reading</p>
-        <h2 id="continue-title" className="continue__title">
-          {book.title}
-        </h2>
-        {book.author ? <p className="continue__author">{book.author}</p> : null}
-        <div className="continue__progress">
-          <div
-            className="continue__bar"
-            role="progressbar"
-            aria-label="Progress"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={Math.floor(progress * 100)}
-          >
-            <span style={{ width: `${progress * 100}%` }} />
-          </div>
-          <p className="continue__meta">
-            <span>
-              {book.position > 0 ? `${progressLabel(book)} read` : 'Just started'} · {pagesLabel(book)}
-            </span>
-            <span>
-              {timeLeftLabel(book, wpm)} at {wpm} wpm
-            </span>
-          </p>
-        </div>
-        <Link to={ROUTES.read(book.id)} className="btn btn--primary btn--lg continue__resume">
-          <Icon name="play" size={20} />
-          Resume
-          <span className="visually-hidden"> {book.title}</span>
-        </Link>
-      </div>
-    </section>
-  );
-}
-
-// ---------------------------------------------------------------------------
-
 function Shelf({
   books,
   tags,
@@ -330,7 +302,6 @@ function Shelf({
     for (const t of tags) c[`tag:${t}`] = books.filter((b) => b.tags.includes(t)).length;
     return c;
   }, [books, tags]);
-  const resume = useMemo(() => continueReading(books), [books]);
   const filtering = effectiveFilter !== 'all' || deferredQuery.trim() !== '';
 
   const chips: { value: FilterKey; label: string; tag?: boolean }[] = [
@@ -340,8 +311,6 @@ function Shelf({
 
   return (
     <>
-      {resume && !filtering ? <ContinueCard book={resume} wpm={wpm} /> : null}
-
       <div className="lib-toolbar" role="search">
         <div className="lib-search">
           <Icon name="search" size={18} className="lib-search__icon" />

@@ -7,7 +7,8 @@ export function readerTree(bookId: string) {
   return (
     <MemoryRouter initialEntries={[`/read/${bookId}`]}>
       <Routes>
-        <Route path="/" element={<p>LIBRARY</p>} />
+        <Route path="/" element={<p>HOME</p>} />
+        <Route path="/library" element={<p>LIBRARY</p>} />
         <Route path="/read/:bookId" element={<ReaderPage />} />
       </Routes>
     </MemoryRouter>

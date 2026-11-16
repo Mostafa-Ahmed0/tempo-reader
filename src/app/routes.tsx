@@ -1,10 +1,12 @@
 import { lazy, Suspense, useEffect, type ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
+import HomePage from '../home/HomePage';
 import LibraryPage from '../library/LibraryPage';
 import { Shell } from './Shell';
 
-// The library is the first paint, so it stays in the main chunk. Everything else is its own chunk:
-// the reader is the heaviest screen, stats (charts) and settings are rarely the first screen.
+// Home is the first paint and the library the next tap (it also receives opened/shared files), so
+// both stay in the main chunk; neither pulls in the parsers or the stats charts. Everything else is
+// its own chunk: the reader is the heaviest screen, stats (charts) and settings are rarely first.
 const loadReader = () => import('../reader/ReaderPage');
 const loadStats = () => import('../stats/StatsPage');
 const loadSettings = () => import('../settings/SettingsPage');
@@ -14,7 +16,8 @@ const SettingsPage = lazy(loadSettings);
 
 /** Route paths, for links: `ROUTES.read(book.id)` etc. */
 export const ROUTES = {
-  library: '/',
+  home: '/',
+  library: '/library',
   stats: '/stats',
   settings: '/settings',
   read: (bookId: string) => `/read/${encodeURIComponent(bookId)}`,
@@ -53,7 +56,8 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route element={<Shell />}>
-        <Route index element={<LibraryPage />} />
+        <Route index element={<HomePage />} />
+        <Route path="library" element={<LibraryPage />} />
         <Route path="stats" element={tab(<StatsPage />)} />
         <Route path="settings" element={tab(<SettingsPage />)} />
       </Route>

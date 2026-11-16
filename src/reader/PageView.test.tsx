@@ -19,7 +19,8 @@ async function seedPaged(position = 0) {
 const pageText = () => document.querySelector('.rd-page__text');
 const pageWords = () => Array.from(document.querySelectorAll('.rd-page__text [data-i]')).map((el) => el.textContent);
 const current = () => Array.from(document.querySelectorAll('.rd-page__text .is-current')).map((el) => el.textContent);
-const viewToggle = () => screen.getByRole('button', { name: 'Page view' });
+const pageRadio = () => screen.getByRole('radio', { name: 'Page' });
+const wordRadio = () => screen.getByRole('radio', { name: 'Word' });
 
 beforeEach(async () => {
   useSettings.getState().reset();
@@ -35,19 +36,19 @@ describe('page view', () => {
   it('opens in the word view; P / the toggle switch views and keep the position', async () => {
     const book = await seedPaged(7); // "Third", page 2
     await renderReaderAt(book.id);
-    expect(viewToggle().getAttribute('aria-pressed')).toBe('false');
+    expect(pageRadio().getAttribute('aria-checked')).toBe('false');
     expect(pageText()).toBeNull();
     expect(document.querySelector('.rd-rsvp__word')?.textContent).toBe('Third');
 
     fireEvent.keyDown(window, { key: 'p' });
-    expect(viewToggle().getAttribute('aria-pressed')).toBe('true');
+    expect(pageRadio().getAttribute('aria-checked')).toBe('true');
     expect(screen.getByText('Page 2 of 4', { selector: '.rd-page__num' })).toBeTruthy();
     // the whole of page 2, paragraphs kept, and nothing of other pages
     expect(pageWords()).toEqual(['now.', 'Third', 'one.', 'New', 'paragraph', 'starts.', 'And', 'ends.']);
     expect(document.querySelectorAll('.rd-page__text .rd-ctx__p')).toHaveLength(2);
     expect(current()).toEqual(['Third']);
 
-    fireEvent.click(viewToggle());
+    fireEvent.click(wordRadio());
     expect(pageText()).toBeNull();
     expect(document.querySelector('.rd-rsvp__word')?.textContent).toBe('Third');
     await waitFor(async () => expect((await getBook(book.id))?.position).toBe(7));
@@ -61,13 +62,13 @@ describe('page view', () => {
     view.unmount();
     await renderReaderAt(book.id);
     expect(pageText()).toBeNull();
-    expect(viewToggle().getAttribute('aria-pressed')).toBe('false');
+    expect(pageRadio().getAttribute('aria-checked')).toBe('false');
   });
 
   it('the highlight follows the position, with the focus letter and the whole group', async () => {
     const book = await seedPaged(6);
     await renderReaderAt(book.id);
-    fireEvent.click(viewToggle());
+    fireEvent.click(pageRadio());
     expect(current()).toEqual(['now.']);
     fireEvent.keyDown(window, { key: 'ArrowRight' }); // next sentence: "Third"
     expect(current()).toEqual(['Third']);
@@ -85,18 +86,18 @@ describe('page view', () => {
   it('tapping a word jumps there, in the page view and after switching back', async () => {
     const book = await seedPaged(6);
     await renderReaderAt(book.id);
-    fireEvent.click(viewToggle());
+    fireEvent.click(pageRadio());
     fireEvent.click(screen.getByText('paragraph'));
     expect(current()).toEqual(['paragraph']);
     expect(screen.getByRole('button', { name: 'Play' })).toBeTruthy(); // a tap does not start playback
-    fireEvent.click(viewToggle());
+    fireEvent.click(wordRadio());
     expect(document.querySelector('.rd-rsvp__word')?.textContent).toBe('paragraph');
   });
 
   it('previous / next page buttons and PageUp / PageDown turn pages (skipping the blank page)', async () => {
     const book = await seedPaged();
     await renderReaderAt(book.id);
-    fireEvent.click(viewToggle());
+    fireEvent.click(pageRadio());
     expect(screen.getByRole('button', { name: 'Previous page' })).toHaveProperty('disabled', true);
     fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
     expect(current()).toEqual(['now.']);
@@ -108,7 +109,7 @@ describe('page view', () => {
     fireEvent.keyDown(window, { key: 'PageUp' });
     expect(current()).toEqual(['now.']);
     // also in the word view
-    fireEvent.click(viewToggle());
+    fireEvent.click(wordRadio());
     fireEvent.keyDown(window, { key: 'PageUp' });
     expect(document.querySelector('.rd-rsvp__word')?.textContent).toBe('First');
   });
@@ -117,7 +118,7 @@ describe('page view', () => {
     useSettings.getState().set({ wpm: 1500 });
     const book = await seedPaged(3);
     await renderReaderAt(book.id);
-    fireEvent.click(viewToggle());
+    fireEvent.click(pageRadio());
     expect(screen.getByText('Page 1 of 4', { selector: '.rd-page__num' })).toBeTruthy();
     fireEvent.keyDown(window, { key: ' ' });
     expect(screen.getByRole('button', { name: 'Pause' })).toBeTruthy();
@@ -145,6 +146,32 @@ describe('page view', () => {
     expect(screen.getByRole('button', { name: 'Pause' })).toBeTruthy();
     expect(document.querySelector('.rd-rsvp__word')?.textContent).toBe(word);
     fireEvent.keyDown(window, { key: ' ' });
+  });
+
+  it('the Word | Page switch is a labelled radiogroup with arrow keys and a roving tab stop', async () => {
+    const book = await seedPaged(7);
+    await renderReaderAt(book.id);
+    const group = screen.getByRole('radiogroup', { name: 'Reading view' });
+    expect(group.classList.contains('is-page')).toBe(false);
+    expect(wordRadio().getAttribute('aria-checked')).toBe('true');
+    expect(wordRadio().tabIndex).toBe(0);
+    expect(pageRadio().tabIndex).toBe(-1);
+
+    wordRadio().focus();
+    fireEvent.keyDown(wordRadio(), { key: 'ArrowRight' });
+    expect(pageRadio().getAttribute('aria-checked')).toBe('true');
+    expect(document.activeElement).toBe(pageRadio());
+    expect(group.classList.contains('is-page')).toBe(true); // the thumb sits on the Page side
+    expect(pageText()).not.toBeNull();
+    // the arrow went to the switch, not to the reader's "next sentence"
+    expect(current()).toEqual(['Third']);
+
+    fireEvent.keyDown(pageRadio(), { key: 'ArrowLeft' });
+    expect(wordRadio().getAttribute('aria-checked')).toBe('true');
+    expect(document.querySelector('.rd-rsvp__word')?.textContent).toBe('Third');
+    // and P still toggles from anywhere
+    fireEvent.keyDown(window, { key: 'p' });
+    expect(pageRadio().getAttribute('aria-checked')).toBe('true');
   });
 
   it('is listed in the keyboard shortcuts', async () => {

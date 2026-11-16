@@ -11,6 +11,7 @@ const PATHS = {
   ),
   back: <path d="M11 7 6 12l5 5M18 7l-5 5 5 5" />,
   forward: <path d="m13 7 5 5-5 5M6 7l5 5-5 5" />,
+  home: <path d="M4.5 10.5 12 4.5l7.5 6V19a.5.5 0 0 1-.5.5h-4.5v-5.5h-5v5.5H5a.5.5 0 0 1-.5-.5Z" />,
   library: <path d="M5 4.5h3.5v15H5zM10.5 4.5H14v15h-3.5zM16 5.6l3.3-.9 3.2 14-3.3.8z" transform="translate(-1 0)" />,
   stats: <path d="M4 20h16M7 16.5V11M12 16.5V6M17 16.5v-8" />,
   settings: (

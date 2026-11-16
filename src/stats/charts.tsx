@@ -1,6 +1,6 @@
 /* Hand-rolled SVG charts, drawn in pixel space (measured width) so labels keep a real font size. */
 import { useEffect, useId, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
-import { niceTicks, parseDayKey, type DayBar, type WpmPoint } from './aggregate';
+import { formatMinutes, niceTicks, parseDayKey, type DayBar, type WpmPoint } from './aggregate';
 
 function useWidth<T extends HTMLElement>(): [RefObject<T | null>, number] {
   const ref = useRef<T>(null);
@@ -20,14 +20,8 @@ function useWidth<T extends HTMLElement>(): [RefObject<T | null>, number] {
 const fmtDay = (key: string, opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' }) =>
   parseDayKey(key).toLocaleDateString(undefined, opts);
 
-export const formatMinutes = (m: number) => {
-  if (m <= 0) return '0 min';
-  if (m < 1) return '<1 min';
-  if (m < 60) return `${Math.round(m)} min`;
-  const h = Math.floor(m / 60);
-  const r = Math.round(m % 60);
-  return r ? `${h} h ${r} min` : `${h} h`;
-};
+// lives with the pure helpers so Home can use it without loading the charts
+export { formatMinutes };
 
 // ---------------------------------------------------------------------------
 // Progress ring

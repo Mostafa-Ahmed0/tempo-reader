@@ -14,18 +14,21 @@ afterEach(() => {
 });
 
 function ctx(pathname: string) {
-  return { pathname, navigateToLibrary: vi.fn(), exitApp: vi.fn() };
+  return { pathname, navigateToLibrary: vi.fn(), navigateHome: vi.fn(), exitApp: vi.fn() };
 }
 
 describe('back button', () => {
-  it('exits on the library root and goes to the library from other tabs', () => {
+  it('exits on Home (the root) and goes to Home from the library and the other tabs', () => {
     const root = ctx('/');
     expect(handleBack(root)).toBe('exit');
     expect(root.exitApp).toHaveBeenCalledOnce();
-    const stats = ctx('/stats');
-    expect(handleBack(stats)).toBe('library');
-    expect(stats.navigateToLibrary).toHaveBeenCalledOnce();
-    expect(stats.exitApp).not.toHaveBeenCalled();
+    for (const path of ['/library', '/stats', '/settings']) {
+      const c = ctx(path);
+      expect(handleBack(c)).toBe('home');
+      expect(c.navigateHome).toHaveBeenCalledOnce();
+      expect(c.navigateToLibrary).not.toHaveBeenCalled();
+      expect(c.exitApp).not.toHaveBeenCalled();
+    }
   });
 
   it('closes an open dialog first (via Escape) instead of navigating', () => {

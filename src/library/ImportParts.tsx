@@ -1,6 +1,7 @@
-import { useId, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type DragEvent, type FormEvent } from 'react';
 import { addBook } from '../core/db';
 import type { Book } from '../core/types';
+import { isNativePlatform } from '../platform/env';
 import { Button, IconButton, Modal, toast } from '../ui';
 import { FORMAT_CAVEAT, FORMAT_FAMILIES, familyName, supportedFormatsText } from '../parsers/formats';
 import { loadParsers, useImports, type ImportItem } from './importer';
@@ -195,24 +196,12 @@ export function SupportedFormatsLine({ className }: { className?: string }) {
   );
 }
 
-/** Small text button for the library header that opens the full list. */
-export function FormatsButton() {
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <button type="button" className="lib-formats-btn" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-label="Supported file types">
-        File types
-      </button>
-      <FormatsModal open={open} onClose={() => setOpen(false)} />
-    </>
-  );
-}
-
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-export function FormatsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+/** Every format family with its extensions, plus the limits. */
+export function FormatsList() {
   return (
-    <Modal open={open} onClose={onClose} title="Supported file types" placement="center" className="lib-formats">
+    <>
       <ul className="lib-formats__list">
         {FORMAT_FAMILIES.map((f) => (
           <li key={f.label} className="lib-formats__item">
@@ -222,6 +211,121 @@ export function FormatsModal({ open, onClose }: { open: boolean; onClose: () => 
         ))}
       </ul>
       <p className="lib-formats__note muted">{FORMAT_CAVEAT}</p>
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Add books window: drop zone, "Choose files", supported types, paste
+// ---------------------------------------------------------------------------
+
+/** Phones / tablets and the Android app: there is nothing to drag from, so the zone says so. */
+function isTouchOnly(): boolean {
+  if (isNativePlatform()) return true;
+  try {
+    return typeof window.matchMedia === 'function' && window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+  } catch {
+    return false;
+  }
+}
+
+function dragHasFiles(e: DragEvent<HTMLElement>): boolean {
+  return Array.from(e.dataTransfer?.types ?? []).includes('Files');
+}
+
+export interface AddBooksModalProps {
+  open: boolean;
+  onClose: () => void;
+  /** Dropped files; the caller enqueues them and closes the window (the import panel shows progress). */
+  onFiles: (files: File[]) => void;
+  /** Open the system file picker. */
+  onChoose: () => void;
+  onPaste: () => void;
+  /** Prefetch the parsers on intent (hover / focus / touch). */
+  onIntent?: () => void;
+}
+
+export function AddBooksModal({ open, onClose, onFiles, onChoose, onPaste, onIntent }: AddBooksModalProps) {
+  const [over, setOver] = useState(false);
+  const depth = useRef(0);
+  const touch = useMemo(() => (open ? isTouchOnly() : false), [open]);
+  const typesId = useId();
+
+  useEffect(() => {
+    if (!open) {
+      depth.current = 0;
+      setOver(false);
+    }
+  }, [open]);
+
+  const zoneHandlers = {
+    onDragEnter: (e: DragEvent<HTMLElement>) => {
+      if (!dragHasFiles(e)) return;
+      e.preventDefault();
+      depth.current++;
+      setOver(true);
+      onIntent?.();
+    },
+    onDragOver: (e: DragEvent<HTMLElement>) => {
+      if (!dragHasFiles(e)) return;
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    },
+    onDragLeave: (e: DragEvent<HTMLElement>) => {
+      if (!dragHasFiles(e)) return;
+      depth.current = Math.max(0, depth.current - 1);
+      if (depth.current === 0) setOver(false);
+    },
+    onDrop: (e: DragEvent<HTMLElement>) => {
+      if (!dragHasFiles(e)) return;
+      // preventDefault also tells the library's page-wide drop handler that this drop is taken
+      e.preventDefault();
+      depth.current = 0;
+      setOver(false);
+      const files = Array.from(e.dataTransfer?.files ?? []);
+      if (files.length) onFiles(files);
+    },
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Add books" className="add-books">
+      <div className={`add-drop${over ? ' is-over' : ''}${touch ? ' is-touch' : ''}`} {...zoneHandlers} data-testid="add-drop">
+        <span className="add-drop__icon" aria-hidden="true">
+          <XIcon name={touch ? 'file' : 'download'} size={30} />
+        </span>
+        <p className="add-drop__title" aria-live="polite">
+          {over ? 'Release to add' : touch ? 'Pick files from your device' : 'Drop files here'}
+        </p>
+        <p className="add-drop__sub">{touch ? 'Choose one book or several at once.' : 'Several at once are fine, or'}</p>
+        <Button
+          variant="primary"
+          size="lg"
+          icon="plus"
+          className="add-drop__choose"
+          onClick={onChoose}
+          onPointerEnter={onIntent}
+          onFocus={onIntent}
+          onPointerDown={onIntent}
+          data-autofocus
+        >
+          Choose files
+        </Button>
+      </div>
+
+      <section className="add-types" aria-labelledby={typesId}>
+        <h3 id={typesId} className="add-types__title">
+          Supported file types
+        </h3>
+        <FormatsList />
+      </section>
+
+      <button type="button" className="add-paste" onClick={onPaste}>
+        <XIcon name="clipboard" size={18} />
+        <span>
+          <span className="add-paste__title">Paste text instead</span>
+          <span className="add-paste__sub">An article, a chapter, notes</span>
+        </span>
+      </button>
     </Modal>
   );
 }

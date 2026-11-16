@@ -59,9 +59,13 @@
 .rd-reader__desktop-only {
   display: none;
 }
-.rd-reader__view[aria-pressed='true'] {
-  color: var(--accent);
-  background: var(--accent-soft);
+.rd-reader__wide-only {
+  display: none;
+}
+@media (min-width: 400px) {
+  .rd-reader__wide-only {
+    display: inline-flex;
+  }
 }
 @media (hover: hover) and (pointer: fine) {
   .rd-reader__desktop-only {
@@ -259,6 +263,60 @@
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+}
+
+/* Word | Page switch: the thumb slides to the chosen side and stays there */
+.rd-viewswitch {
+  position: relative;
+  justify-self: center;
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+  height: var(--tap-target);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-family: var(--font-sans);
+}
+.rd-viewswitch__thumb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc(50% - 3px);
+  border-radius: var(--radius-full);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border-strong);
+  transition: transform var(--duration-med) var(--ease-out);
+  pointer-events: none;
+}
+.rd-viewswitch.is-page .rd-viewswitch__thumb {
+  transform: translateX(100%);
+}
+.rd-viewswitch__opt {
+  position: relative; /* above the thumb */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 84px;
+  height: 100%;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-full);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  transition: color var(--duration-med) var(--ease-out);
+}
+.rd-viewswitch__opt:hover {
+  color: var(--text);
+}
+.rd-viewswitch__opt[aria-checked='true'] {
+  color: var(--accent);
+}
+.rd-viewswitch__opt:focus-visible {
+  border-radius: var(--radius-full);
+  outline-offset: -2px;
 }
 
 /* scrubber */
@@ -725,6 +783,10 @@
   }
   .rd-speed__training-dot {
     animation: none;
+  }
+  .rd-viewswitch__thumb,
+  .rd-viewswitch__opt {
+    transition: none;
   }
 }
 

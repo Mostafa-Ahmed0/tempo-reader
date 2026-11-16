@@ -99,3 +99,16 @@ describe('NumberField', () => {
     expect(input.value).toBe('250');
   });
 });
+
+describe('Your name', () => {
+  it('is an optional field in Settings that goes to the local settings store', async () => {
+    useSettings.getState().reset();
+    const { default: SettingsPage } = await import('./SettingsPage');
+    render(<SettingsPage />);
+    const input = screen.getByLabelText('Your name') as HTMLInputElement;
+    expect(input.value).toBe('');
+    fireEvent.change(input, { target: { value: 'Anna' } });
+    expect(useSettings.getState().userName).toBe('Anna');
+    expect(input.value).toBe('Anna');
+  });
+});

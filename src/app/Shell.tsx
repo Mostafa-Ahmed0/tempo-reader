@@ -1,10 +1,13 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { Icon, type IconName } from '../ui';
+import { ROUTES } from './routes';
 
-const TABS: { to: string; label: string; icon: IconName; end?: boolean }[] = [
-  { to: '/', label: 'Library', icon: 'library', end: true },
-  { to: '/stats', label: 'Stats', icon: 'stats' },
-  { to: '/settings', label: 'Settings', icon: 'settings' },
+// A function, not a constant: routes.tsx imports this module, so ROUTES is not ready at load time.
+const tabs = (): { to: string; label: string; icon: IconName; end?: boolean }[] => [
+  { to: ROUTES.home, label: 'Home', icon: 'home', end: true },
+  { to: ROUTES.library, label: 'Library', icon: 'library' },
+  { to: ROUTES.stats, label: 'Stats', icon: 'stats' },
+  { to: ROUTES.settings, label: 'Settings', icon: 'settings' },
 ];
 
 /**
@@ -19,7 +22,7 @@ export function Shell() {
           t<span>e</span>
         </div>
         <ul className="shell__tabs">
-          {TABS.map((t) => (
+          {tabs().map((t) => (
             <li key={t.to}>
               <NavLink to={t.to} end={t.end} className={({ isActive }) => `shell__tab${isActive ? ' is-active' : ''}`}>
                 <span className="shell__tab-icon">

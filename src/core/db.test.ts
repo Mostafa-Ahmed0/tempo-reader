@@ -172,13 +172,14 @@ describe('backup', () => {
     const book = await addBook({ ...sample(), cover }, file);
     await addBookmark({ bookId: book.id, position: 3, excerpt: 'delta', note: 'hi' });
     await addSession({ bookId: book.id, startedAt: 5, durationMs: 60000, wordsRead: 300, avgWpm: 300 });
-    useSettings.getState().set({ wpm: 555, theme: 'sepia' });
+    useSettings.getState().set({ wpm: 555, theme: 'sepia', userName: 'Anna' });
 
     const blob = await exportBackup();
     const json = JSON.parse(await blob.text());
     expect(json.format).toBe('tempo-backup');
     expect(json.books[0].cover).toEqual({ type: 'image/png', base64: expect.any(String) });
     expect(json.settings.wpm).toBe(555);
+    expect(json.settings.userName).toBe('Anna');
 
     await Promise.all(db.tables.map((t) => t.clear()));
     useSettings.getState().reset();
@@ -194,6 +195,7 @@ describe('backup', () => {
     expect(await listSessions()).toHaveLength(1);
     expect(useSettings.getState().wpm).toBe(555);
     expect(useSettings.getState().theme).toBe('sepia');
+    expect(useSettings.getState().userName).toBe('Anna');
   });
 
   it('carries real page starts to another device; older backups without them still import', async () => {

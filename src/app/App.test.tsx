@@ -1,8 +1,10 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useParams } from 'react-router-dom';
 import App from './App';
 import { useSettings } from '../core/settings';
+import { __resetImportsForTests, useImports } from '../library/importer';
+import { pushIncomingFiles } from '../platform/incomingFiles';
 import { Modal, toast, Toggle } from '../ui';
 import { useState } from 'react';
 
@@ -17,16 +19,28 @@ vi.mock('../reader/ReaderPage', () => ({
 beforeEach(() => {
   window.location.hash = '#/';
   useSettings.getState().reset();
+  __resetImportsForTests();
 });
 afterEach(cleanup);
 
 describe('App shell', () => {
-  it('renders the library with the main nav', () => {
+  it('opens on Home, with Home, Library, Stats and Settings in the main nav', () => {
+    render(<App />);
+    expect(screen.getByRole('heading', { level: 1, name: /^Good (morning|afternoon|evening)$/ })).toBeTruthy();
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    const links = within(nav).getAllByRole('link');
+    expect(links.map((l) => l.textContent)).toEqual(['Home', 'Library', 'Stats', 'Settings']);
+    expect(links.map((l) => l.getAttribute('href'))).toEqual(['#/', '#/library', '#/stats', '#/settings']);
+    expect(links[0].className).toContain('is-active');
+  });
+
+  it('the library has its own route', () => {
+    window.location.hash = '#/library';
     render(<App />);
     expect(screen.getByRole('heading', { level: 1, name: 'Library' })).toBeTruthy();
     const nav = screen.getByRole('navigation', { name: 'Main' });
-    expect(nav.textContent).toContain('Stats');
-    expect(nav.textContent).toContain('Settings');
+    expect(within(nav).getByRole('link', { name: 'Library' }).className).toContain('is-active');
+    expect(within(nav).getByRole('link', { name: 'Home' }).className).not.toContain('is-active');
   });
 
   it('navigates between tab pages (lazy-loaded)', async () => {
@@ -47,10 +61,20 @@ describe('App shell', () => {
     expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull();
   });
 
-  it('redirects unknown routes to the library', () => {
+  it('redirects unknown routes to Home', () => {
     window.location.hash = '#/no/such/page';
     render(<App />);
-    expect(screen.getByRole('heading', { level: 1, name: 'Library' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: /^Good / })).toBeTruthy();
+    expect(window.location.hash).toBe('#/');
+  });
+
+  it('files opened or shared from outside land in the library, where the import shows', async () => {
+    render(<App />);
+    expect(screen.queryByRole('heading', { level: 1, name: 'Library' })).toBeNull();
+    act(() => pushIncomingFiles([new File(['x'], 'nope.xyz')]));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Library' })).toBeTruthy();
+    expect(window.location.hash).toBe('#/library');
+    expect(useImports.getState().items.map((i) => i.name)).toEqual(['nope.xyz']);
   });
 
   it('applies data-theme and --focus from settings', () => {
