@@ -4,7 +4,7 @@ import { ROUTES } from '../app/routes';
 import { addSession, savePosition } from '../core/db';
 import { registerBackHandler } from '../platform/backButton';
 import { useSettings, type Settings } from '../core/settings';
-import { pageMapOf } from '../core/pages';
+import { nextPageStart, pageMapOf, prevPageStart } from '../core/pages';
 import { formatDuration } from '../core/text';
 import type { Book, TokenizedBook } from '../core/types';
 import { Button, Icon, IconButton, toast } from '../ui';
@@ -12,6 +12,7 @@ import { ContextView, LiveWord, ProgressLine, ProgressStats, Scrubber, SpeedCont
 import { ReaderEngine, type EngineOptions } from './engine';
 import { dominantDirection } from './frameLayout';
 import { useEngineState, useWakeLock } from './hooks';
+import { PageView } from './PageView';
 import { ReaderIcon } from './ReaderIcon';
 import { BookmarksSheet, ChaptersSheet, createBookmark, QuickSettings, ShortcutsHelp } from './Sheets';
 
@@ -40,6 +41,8 @@ export function engineOptions(s: Settings): EngineOptions {
 }
 
 type SheetName = 'settings' | 'bookmarks' | 'chapters' | 'help';
+/** 'word' = RSVP (the default every time a book is opened), 'page' = the whole current page as text. */
+export type ReaderView = 'word' | 'page';
 
 function isTextField(el: EventTarget | null): boolean {
   if (!(el instanceof HTMLElement)) return false;
@@ -164,6 +167,22 @@ export function Reader({ book, tok }: { book: Book; tok: TokenizedBook }) {
 
   const exit = useCallback(() => navigate(ROUTES.library), [navigate]);
 
+  // ---------------------------------------------------------------- view (word / page)
+  // Not persisted: every book opens in the word view. Switching never touches the engine, so the
+  // position and play/pause state carry over unchanged (playback simply continues in the other view).
+  const [view, setView] = useState<ReaderView>('word');
+  const viewRef = useRef(view);
+  viewRef.current = view;
+  const toggleView = useCallback(() => setView((v) => (v === 'word' ? 'page' : 'word')), []);
+  const prevPage = useCallback(() => {
+    const p = prevPageStart(pages, engine.position);
+    if (p !== null) engine.seek(p);
+  }, [engine, pages]);
+  const nextPage = useCallback(() => {
+    const p = nextPageStart(pages, engine.position, engine.total);
+    if (p !== null) engine.seek(p);
+  }, [engine, pages]);
+
   const addBookmarkHere = useCallback(async () => {
     try {
       await createBookmark(book.id, engine);
@@ -180,7 +199,8 @@ export function Reader({ book, tok }: { book: Book; tok: TokenizedBook }) {
     (ms: number) => {
       clearTimeout(hideTimer.current);
       hideTimer.current = setTimeout(() => {
-        if (engine.getState().playing && !sheetRef.current) setChromeHidden(true);
+        // the page view is for looking around: its controls never fade
+        if (engine.getState().playing && !sheetRef.current && viewRef.current === 'word') setChromeHidden(true);
       }, ms);
     },
     [engine],
@@ -190,12 +210,12 @@ export function Reader({ book, tok }: { book: Book; tok: TokenizedBook }) {
     if (engine.getState().playing) scheduleHide(HIDE_CHROME_AFTER_POKE_MS);
   }, [engine, scheduleHide]);
   useEffect(() => {
-    if (state.playing) scheduleHide(HIDE_CHROME_AFTER_PLAY_MS);
+    if (state.playing && view === 'word') scheduleHide(HIDE_CHROME_AFTER_PLAY_MS);
     else {
       clearTimeout(hideTimer.current);
       setChromeHidden(false);
     }
-  }, [state.playing, scheduleHide]);
+  }, [state.playing, view, scheduleHide]);
   useEffect(() => () => clearTimeout(hideTimer.current), []);
 
   // ---------------------------------------------------------------- keyboard
@@ -256,6 +276,16 @@ export function Reader({ book, tok }: { book: Book; tok: TokenizedBook }) {
         case '?':
           openSheet('help');
           break;
+        case 'p':
+        case 'P':
+          toggleView();
+          break;
+        case 'PageUp':
+          prevPage();
+          break;
+        case 'PageDown':
+          nextPage();
+          break;
         default:
           handled = false;
       }
@@ -266,10 +296,12 @@ export function Reader({ book, tok }: { book: Book; tok: TokenizedBook }) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [engine, exit, addBookmarkHere, openSheet, poke]);
+  }, [engine, exit, addBookmarkHere, openSheet, poke, toggleView, prevPage, nextPage]);
 
   // ---------------------------------------------------------------- render
-  const showingContext = !state.playing && !state.finished && showContextSetting && engine.total > 0;
+  const pageView = view === 'page' && engine.total > 0;
+  const showingContext = !pageView && !state.playing && !state.finished && showContextSetting && engine.total > 0;
+  const textStage = pageView || showingContext;
   const restart = () => {
     setSummary(null);
     visit.current = { words: 0, ms: 0 };
@@ -291,6 +323,16 @@ export function Reader({ book, tok }: { book: Book; tok: TokenizedBook }) {
           <span className="rd-reader__book">{book.title}</span>
           {book.author ? <span className="rd-reader__author">{book.author}</span> : null}
         </div>
+        <button
+          type="button"
+          className="btn btn--ghost btn--md btn--icon rd-reader__view"
+          aria-label="Page view"
+          aria-pressed={view === 'page'}
+          title={view === 'page' ? 'Back to word view (P)' : 'Page view (P)'}
+          onClick={toggleView}
+        >
+          <ReaderIcon name={view === 'page' ? 'word-view' : 'page-view'} />
+        </button>
         <button type="button" className="btn btn--ghost btn--md btn--icon" aria-label="Add bookmark here" title="Add bookmark (B)" onClick={() => void addBookmarkHere()}>
           <ReaderIcon name="bookmark-plus" />
         </button>
@@ -309,14 +351,22 @@ export function Reader({ book, tok }: { book: Book; tok: TokenizedBook }) {
       </header>
 
       <main
-        className={['rd-reader__stage', showingContext && 'rd-reader__stage--context'].filter(Boolean).join(' ')}
-        aria-label={showingContext ? 'Text around your position. Tap a word to continue from there.' : 'Reading area. Tap to play or pause.'}
+        className={['rd-reader__stage', textStage && 'rd-reader__stage--context'].filter(Boolean).join(' ')}
+        aria-label={
+          pageView
+            ? 'Current page. Tap a word to read from there.'
+            : showingContext
+              ? 'Text around your position. Tap a word to continue from there.'
+              : 'Reading area. Tap to play or pause.'
+        }
         onClick={() => {
-          if (!showingContext && !state.finished) engine.toggle();
+          if (!textStage && !state.finished) engine.toggle();
         }}
       >
         {state.finished ? (
           <Completion summary={summary} title={book.title} total={engine.total} onLibrary={exit} onRestart={restart} />
+        ) : pageView ? (
+          <PageView engine={engine} tok={tok} pages={pages} dir={dir} />
         ) : showingContext ? (
           <ContextView engine={engine} tok={tok} dir={dir} onSeek={(i) => engine.seek(i)} />
         ) : (

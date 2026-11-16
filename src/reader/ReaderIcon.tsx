@@ -16,6 +16,10 @@ const PATHS = {
   'bookmark-plus': <path d="M7 4.5h10a.5.5 0 0 1 .5.5v14.6l-5.5-3.8-5.5 3.8V5a.5.5 0 0 1 .5-.5ZM12 8v5M9.5 10.5h5" />,
   bookmarks: <path d="M8 4.5h9a.5.5 0 0 1 .5.5v14.6L12.5 16 7.5 19.6V5a.5.5 0 0 1 .5-.5ZM5 7v13" />,
   sliders: <path d="M4 7h10M18 7h2M4 17h4M12 17h8M16 5v4M10 15v4" />,
+  // a page of text (switch to the page view)
+  'page-view': <path d="M6.5 3.5h7.5l4 4v12.5a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5V4a.5.5 0 0 1 .5-.5ZM9 10h6M9 13.5h6M9 17h4" />,
+  // one word between focus ticks (back to the word view)
+  'word-view': <path d="M12 4v3.5M12 16.5V20M5.5 12h13" />,
 } as const;
 
 export type ReaderIconName = keyof typeof PATHS;

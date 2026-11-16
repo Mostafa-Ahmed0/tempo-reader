@@ -426,6 +426,8 @@ const SHORTCUTS: [string, string][] = [
   ['← / →', 'Previous / next sentence'],
   ['Shift + ← / →', 'Previous / next paragraph'],
   ['↑ / ↓', 'Faster / slower (±10 wpm)'],
+  ['P', 'Word view / page view'],
+  ['PgUp / PgDn', 'Previous / next page'],
   ['B', 'Add bookmark'],
   ['C', 'Chapters'],
   ['S', 'Reading settings'],

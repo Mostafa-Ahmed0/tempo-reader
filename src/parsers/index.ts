@@ -6,38 +6,13 @@ import type { BookFormat, ParsedBook, ParsedSection } from '../core/types';
 import { latin1, looksBinary } from './encoding';
 import { ParseError, UnsupportedFormatError, tooLarge } from './errors';
 import { parseMarkdownBytes, parsePasted, parseTxtBytes } from './txt';
+import { EXT_KIND, supportedFormatsText, type ParserKind } from './formats';
 import { listZipEntries } from './zip';
 
 export { ParseError, UnsupportedFormatError } from './errors';
 export type { ParseErrorCode } from './errors';
 
-/** Internal routing: more specific than BookFormat (.doc vs .docx, .fb2.zip vs .fb2). */
-export type ParserKind = 'txt' | 'md' | 'pdf' | 'epub' | 'mobi' | 'docx' | 'doc' | 'odt' | 'rtf' | 'fb2' | 'fb2zip' | 'html';
-
-const EXT_KIND: Record<string, ParserKind> = {
-  txt: 'txt',
-  text: 'txt',
-  md: 'md',
-  markdown: 'md',
-  pdf: 'pdf',
-  epub: 'epub',
-  mobi: 'mobi',
-  azw: 'mobi',
-  azw3: 'mobi',
-  kf8: 'mobi',
-  prc: 'mobi',
-  pdb: 'mobi',
-  docx: 'docx',
-  doc: 'doc',
-  odt: 'odt',
-  rtf: 'rtf',
-  fb2: 'fb2',
-  'fb2.zip': 'fb2zip',
-  html: 'html',
-  htm: 'html',
-  xhtml: 'html',
-  xht: 'html',
-};
+export type { ParserKind } from './formats';
 
 const KIND_FORMAT: Record<ParserKind, BookFormat> = {
   txt: 'txt',
@@ -196,7 +171,7 @@ export function resolveKind(file: { name: string; type?: string }, bytes: Uint8A
   }
   if (byName && BINARY_KINDS.has(byName)) return byName; // e.g. truncated PDF: the PDF reader reports it
   if (looksBinary(bytes)) {
-    throw new UnsupportedFormatError(`Tempo can't read this kind of file (${file.name}). Supported: PDF, EPUB, MOBI/AZW3, DOCX, DOC, ODT, RTF, FB2, HTML, TXT, Markdown.`);
+    throw new UnsupportedFormatError(`Tempo can't read this kind of file (${file.name}). Supported: ${supportedFormatsText()}.`);
   }
   if (byName) return byName;
   return kindFromText(bytes);

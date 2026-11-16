@@ -245,7 +245,7 @@ export function ContextView({ engine, tok, dir, onSeek }: { engine: ReaderEngine
   const index = useFrameSelector(engine, (f) => Math.min(f.index, engine.total - 1));
   const count = useFrameSelector(engine, (f) => Math.max(1, f.count));
   const boxRef = useRef<HTMLDivElement>(null);
-  const { paragraphStarts, chapterStarts } = engine.analysis;
+  const { paragraphStarts } = engine.analysis;
   const total = engine.total;
 
   // window: 2 paragraphs before, 2 after, but never more than ~350 words on either side
@@ -256,17 +256,7 @@ export function ContextView({ engine, tok, dir, onSeek }: { engine: ReaderEngine
   const endPara = pLast + 1 < paragraphStarts.length ? paragraphStarts[pLast + 1] : total;
   const end = Math.min(endPara, index + 350);
 
-  const blocks: { key: number; heading?: string; from: number; to: number }[] = [];
-  for (let k = Math.max(0, floorIndex(paragraphStarts, start)); k < paragraphStarts.length && paragraphStarts[k] < end; k++) {
-    const ps = paragraphStarts[k];
-    const pe = k + 1 < paragraphStarts.length ? paragraphStarts[k + 1] : total;
-    const from = Math.max(ps, start);
-    const to = Math.min(pe, end);
-    if (to <= from) continue;
-    const ci = from === ps ? floorIndex(chapterStarts, ps) : -1;
-    const heading = ci >= 0 && chapterStarts[ci] === ps ? tok.chapters.find((c) => c.wordIndex === ps)?.title : undefined;
-    blocks.push({ key: ps, heading, from, to });
-  }
+  const blocks = textBlocks(engine, tok, start, end);
 
   useLayoutEffect(() => {
     const box = boxRef.current;
@@ -302,7 +292,37 @@ export function ContextView({ engine, tok, dir, onSeek }: { engine: ReaderEngine
   );
 }
 
-function renderWords(words: readonly string[], from: number, to: number, cur: number, count: number) {
+export interface TextBlock {
+  key: number;
+  /** Chapter title when the block is the first paragraph of a chapter. */
+  heading?: string;
+  from: number;
+  to: number;
+}
+
+/**
+ * The words [start, end) cut into paragraphs (a partial paragraph at either edge stays a block), with
+ * the chapter title on blocks that open a chapter. Shared by the context view and the page view.
+ */
+export function textBlocks(engine: ReaderEngine, tok: TokenizedBook, start: number, end: number): TextBlock[] {
+  const { paragraphStarts, chapterStarts } = engine.analysis;
+  const total = engine.total;
+  const blocks: TextBlock[] = [];
+  for (let k = Math.max(0, floorIndex(paragraphStarts, start)); k < paragraphStarts.length && paragraphStarts[k] < end; k++) {
+    const ps = paragraphStarts[k];
+    const pe = k + 1 < paragraphStarts.length ? paragraphStarts[k + 1] : total;
+    const from = Math.max(ps, start);
+    const to = Math.min(pe, end);
+    if (to <= from) continue;
+    const ci = from === ps ? floorIndex(chapterStarts, ps) : -1;
+    const heading = ci >= 0 && chapterStarts[ci] === ps ? tok.chapters.find((c) => c.wordIndex === ps)?.title : undefined;
+    blocks.push({ key: ps, heading, from, to });
+  }
+  return blocks;
+}
+
+/** Word spans for [from, to). `cur`/`count` mark the current frame (pass cur = -1 to mark nothing). */
+export function renderWords(words: readonly string[], from: number, to: number, cur: number, count: number) {
   const out = [];
   for (let i = from; i < to; i++) {
     const current = i >= cur && i < cur + count;

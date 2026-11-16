@@ -598,6 +598,12 @@
 .welcome__sample:focus-visible {
   border-radius: var(--radius-full);
 }
+.welcome__formats {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  max-width: 46ch;
+  text-wrap: pretty;
+}
 .welcome__hint {
   font-size: var(--text-xs);
   max-width: 40ch;
@@ -800,4 +806,52 @@
   align-self: center;
   font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Supported file types ---------- */
+.lib-formats-btn {
+  display: inline;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 3px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.lib-formats-btn:hover {
+  color: var(--accent);
+  text-decoration-color: currentColor;
+}
+.lib-formats__list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+.lib-formats__item {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  column-gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--text-sm);
+}
+.lib-formats__item:last-child {
+  border-bottom: none;
+}
+.lib-formats__name {
+  font-weight: 550;
+}
+.lib-formats__ext {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+.lib-formats__note {
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
 }

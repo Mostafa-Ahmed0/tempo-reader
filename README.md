@@ -11,10 +11,12 @@ installed like an app from the browser (it then works offline), and can be built
 
 - Library: import PDF, EPUB, MOBI/AZW3, Word (DOCX/DOC), ODT, RTF, FB2, HTML, Markdown and plain-text
   files (pick several at once, drag and drop on a computer, or paste text). Covers, search, sorting,
-  favourites, shelves, reading progress.
+  favourites, shelves, reading progress. The library page lists the supported file types.
 - Reader: 60–1500 words per minute, 1–3 words at a time, focus-letter highlight in your colour,
   smart pauses at punctuation and paragraph ends, soft start, speed training (gradual speed-up),
   chapters, bookmarks, context view when paused, keyboard shortcuts, keeps the screen on while playing.
+- Page view: switch the reader (button at the top or P) between one word at a time and the whole current page as
+  normal text, with the current word highlighted and moving as you read; tap any word to reread from there.
 - Pages: the current page and page count in the reader and the library. PDFs show their real pages
   (page 50 in Tempo is page 50 of the PDF, with "go to page"); other formats an estimate of 275 words
   per page, marked "≈".

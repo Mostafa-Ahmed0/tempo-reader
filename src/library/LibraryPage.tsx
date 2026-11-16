@@ -8,7 +8,7 @@ import { Icon, IconButton, PageHeader, toast } from '../ui';
 import { BookCover } from './BookCover';
 import { BookItem, pagesLabel, progressLabel, timeLeftLabel } from './BookItem';
 import { BookMenu } from './BookMenu';
-import { DropOverlay, ImportPanel, PasteModal } from './ImportParts';
+import { DropOverlay, FormatsButton, ImportPanel, PasteModal, SupportedFormatsLine } from './ImportParts';
 import { loadParsers, useImports } from './importer';
 import {
   BUILTIN_FILTERS,
@@ -183,7 +183,19 @@ export default function LibraryPage() {
     <div className="page library">
       <PageHeader
         title="Library"
-        subtitle={books === undefined ? ' ' : count ? `${count} ${count === 1 ? 'book' : 'books'}` : 'Your books, documents and pasted texts.'}
+        subtitle={
+          books === undefined ? (
+            ' '
+          ) : count ? (
+            <>
+              {`${count} ${count === 1 ? 'book' : 'books'}`}
+              <span aria-hidden="true"> · </span>
+              <FormatsButton />
+            </>
+          ) : (
+            'Your books, documents and pasted texts.'
+          )
+        }
         actions={count ? importActions : undefined}
       />
       <input ref={fileInput} type="file" multiple accept={accept} hidden onChange={onPicked} tabIndex={-1} aria-hidden="true" />
@@ -237,6 +249,7 @@ function Welcome({ onAdd, onPaste, onSample, onIntent }: { onAdd: () => void; on
         <XIcon name="sparkle" size={18} />
         Try a 2-minute sample
       </button>
+      <SupportedFormatsLine className="welcome__formats" />
       <p className="welcome__hint muted">Your files stay on this device. Drop files anywhere on this page to add them.</p>
     </section>
   );

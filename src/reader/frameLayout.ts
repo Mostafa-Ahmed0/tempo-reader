@@ -107,3 +107,23 @@ export function clusterRange(text: string, cp: number): [number, number] {
   }
   return [start, u];
 }
+
+/**
+ * The focus letters of the frame [index, index+count) of `words`, as the word that carries them and
+ * code-point indexes into that word. Same rule as the word view (`frameFocus`), so the page view
+ * highlights exactly the letters the RSVP frame would. Null when nothing is highlighted ('none').
+ */
+export function frameFocusInWords(words: readonly string[], index: number, count: number, mode: HighlightMode): { word: number; letters: number[] } | null {
+  const n = Math.max(0, Math.min(count, words.length - index));
+  if (n <= 0 || index < 0) return null;
+  const parts = words.slice(index, index + n);
+  const { highlight } = frameFocus(parts.join(' '), mode);
+  if (!highlight.length) return null;
+  let offset = 0;
+  for (let k = 0; k < parts.length; k++) {
+    const len = Array.from(parts[k]).length;
+    if (highlight[0] < offset + len) return { word: index + k, letters: highlight.map((cp) => cp - offset) };
+    offset += len + 1;
+  }
+  return null;
+}

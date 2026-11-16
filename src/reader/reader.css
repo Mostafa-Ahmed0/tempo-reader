@@ -59,6 +59,10 @@
 .rd-reader__desktop-only {
   display: none;
 }
+.rd-reader__view[aria-pressed='true'] {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
 @media (hover: hover) and (pointer: fine) {
   .rd-reader__desktop-only {
     display: inline-flex;
@@ -139,6 +143,61 @@
 .rd-ctx__more {
   text-align: center;
   color: var(--text-muted);
+}
+
+/* ---------- page view (whole page; shares the word/paragraph styles of the context view) ---------- */
+.rd-page {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: 44rem;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+}
+.rd-page__bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--gutter) 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.rd-page__num {
+  min-width: 9em;
+  text-align: center;
+  white-space: nowrap;
+}
+.rd-page__text {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-3) max(var(--gutter), env(safe-area-inset-left, 0px)) var(--space-6);
+  font-family: var(--font-reader);
+  font-size: var(--text-lg);
+  line-height: 1.75;
+  color: var(--text);
+  overflow-wrap: break-word;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--space-3), #000 calc(100% - var(--space-5)), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 var(--space-3), #000 calc(100% - var(--space-5)), transparent 100%);
+}
+@media (min-width: 640px) {
+  .rd-page__text {
+    font-size: var(--text-xl);
+  }
+}
+/* the highlight jumps up to 25 times a second: no fade, or it smears */
+.rd-page__text .rd-ctx__w {
+  transition: none;
+}
+.rd-page__focus {
+  color: var(--focus);
+}
+::highlight(rd-focus) {
+  color: var(--focus);
 }
 
 /* ---------- bottom controls ---------- */

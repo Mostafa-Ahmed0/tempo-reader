@@ -8,7 +8,10 @@ import {
   pageAccessibleLabel,
   pageAt,
   pageMapOf,
+  pageRange,
   pageStartIndex,
+  nextPageStart,
+  prevPageStart,
 } from './pages';
 
 describe('pages: real page starts', () => {
@@ -73,5 +76,32 @@ describe('pages: estimate', () => {
     }
     expect(isValidPageStarts([0], 0)).toBe(true);
     expect(isValidPageStarts([0, 0, 1000], 1000)).toBe(true);
+  });
+});
+
+describe('pages: ranges and page turning (page view)', () => {
+  const real = pageMapOf({ wordCount: 1000, pageStarts: [0, 300, 550, 550, 800] });
+  const est = pageMapOf({ wordCount: 600 }); // 3 estimated pages
+
+  it('gives the words of each page', () => {
+    expect(pageRange(real, 1, 1000)).toEqual([0, 300]);
+    expect(pageRange(real, 2, 1000)).toEqual([300, 550]);
+    expect(pageRange(real, 3, 1000)).toEqual([550, 550]); // blank page
+    expect(pageRange(real, 4, 1000)).toEqual([550, 800]);
+    expect(pageRange(real, 5, 1000)).toEqual([800, 1000]);
+    expect(pageRange(est, 1, 600)).toEqual([0, WPP]);
+    expect(pageRange(est, 3, 600)).toEqual([2 * WPP, 600]);
+    expect(pageRange(est, 99, 600)).toEqual([2 * WPP, 600]); // clamped
+  });
+
+  it('next / previous page skip pages without text and stop at the ends', () => {
+    expect(nextPageStart(real, 0, 1000)).toBe(300);
+    expect(nextPageStart(real, 400, 1000)).toBe(550); // page 3 is blank: lands on page 4's text
+    expect(nextPageStart(real, 900, 1000)).toBeNull();
+    expect(prevPageStart(real, 900)).toBe(550);
+    expect(prevPageStart(real, 600)).toBe(300); // not stuck on the blank page 3
+    expect(prevPageStart(real, 10)).toBeNull();
+    expect(nextPageStart(est, 0, 600)).toBe(WPP);
+    expect(prevPageStart(est, WPP + 5)).toBe(0);
   });
 });

@@ -63,6 +63,37 @@ export function pageStartIndex(map: PageMap, page: number): number {
   return map.starts ? map.starts[p - 1] : (p - 1) * WORDS_PER_PAGE_ESTIMATE;
 }
 
+/**
+ * Words [from, to) of 1-based `page` in a book of `wordCount` words (the reader's page view).
+ * A page without text (real pages only) is empty: from === to.
+ */
+export function pageRange(map: PageMap, page: number, wordCount: number): [number, number] {
+  const p = Math.min(map.total, Math.max(1, Math.floor(Number.isFinite(page) ? page : 1)));
+  const n = Math.max(0, wordCount);
+  const from = Math.min(n, pageStartIndex(map, p));
+  const to = p >= map.total ? n : Math.min(n, pageStartIndex(map, p + 1));
+  return [from, Math.max(from, to)];
+}
+
+/** First word of the page before the one holding `position` (skipping pages without text), or null on the first page. */
+export function prevPageStart(map: PageMap, position: number): number | null {
+  const page = pageAt(map, position);
+  const start = pageStartIndex(map, page);
+  for (let p = page - 1; p >= 1; p--) {
+    const s = pageStartIndex(map, p);
+    if (s < start) return pageStartIndex(map, pageAt(map, s));
+  }
+  return null;
+}
+
+/** First word of the page after the one holding `position`, or null when there is none with text. */
+export function nextPageStart(map: PageMap, position: number, wordCount: number): number | null {
+  const page = pageAt(map, position);
+  if (page >= map.total) return null;
+  const s = pageStartIndex(map, page + 1);
+  return s < wordCount ? s : null;
+}
+
 const nf = (n: number) => n.toLocaleString('en-US');
 
 /** "Page 50 of 312" / "≈ page 14 of 120"; short: "p. 50 of 312" / "≈ p. 14 of 120". */

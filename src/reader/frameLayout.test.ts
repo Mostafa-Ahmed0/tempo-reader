@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clusterRange, dominantDirection, frameFocus, textDirection } from './frameLayout';
+import { clusterRange, dominantDirection, frameFocus, frameFocusInWords, textDirection } from './frameLayout';
 
 describe('frameFocus', () => {
   it('single words follow focusIndexes', () => {
@@ -56,5 +56,19 @@ describe('direction', () => {
     expect(dominantDirection(['كان', 'يوم', 'iPhone', 'بارد'])).toBe('rtl');
     expect(dominantDirection(['the', 'cat', 'قط'])).toBe('ltr');
     expect(dominantDirection([])).toBe('ltr');
+  });
+});
+
+describe('frameFocusInWords (page view)', () => {
+  const words = ['A', 'reading', 'test.'];
+  it('maps the frame focus to the word that carries it', () => {
+    expect(frameFocusInWords(words, 1, 1, 'orp')).toEqual({ word: 1, letters: [2] });
+    // a group highlights the longest word only, like the word view
+    expect(frameFocusInWords(words, 0, 3, 'orp')).toEqual({ word: 1, letters: [2] });
+    expect(frameFocusInWords(words, 1, 1, 'first-middle')).toEqual({ word: 1, letters: [0, 3] });
+  });
+  it("is null for 'none' and outside the book", () => {
+    expect(frameFocusInWords(words, 1, 1, 'none')).toBeNull();
+    expect(frameFocusInWords(words, 3, 1, 'orp')).toBeNull();
   });
 });

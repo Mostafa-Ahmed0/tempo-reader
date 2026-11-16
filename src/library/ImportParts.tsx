@@ -2,6 +2,7 @@ import { useId, useMemo, useState, type FormEvent } from 'react';
 import { addBook } from '../core/db';
 import type { Book } from '../core/types';
 import { Button, IconButton, Modal, toast } from '../ui';
+import { FORMAT_CAVEAT, FORMAT_FAMILIES, familyName, supportedFormatsText } from '../parsers/formats';
 import { loadParsers, useImports, type ImportItem } from './importer';
 import { XIcon } from './XIcon';
 
@@ -178,5 +179,49 @@ export function DropOverlay({ visible }: { visible: boolean }) {
         <p className="drop-overlay__sub">Several files at once are fine</p>
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Supported file types (one source: src/parsers/formats.ts)
+// ---------------------------------------------------------------------------
+
+/** One line for running text: "Reads PDF, EPUB, ... and plain text." */
+export function SupportedFormatsLine({ className }: { className?: string }) {
+  return (
+    <p className={className}>
+      Reads {supportedFormatsText()}. {FORMAT_CAVEAT}
+    </p>
+  );
+}
+
+/** Small text button for the library header that opens the full list. */
+export function FormatsButton() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" className="lib-formats-btn" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-label="Supported file types">
+        File types
+      </button>
+      <FormatsModal open={open} onClose={() => setOpen(false)} />
+    </>
+  );
+}
+
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+export function FormatsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return (
+    <Modal open={open} onClose={onClose} title="Supported file types" placement="center" className="lib-formats">
+      <ul className="lib-formats__list">
+        {FORMAT_FAMILIES.map((f) => (
+          <li key={f.label} className="lib-formats__item">
+            <span className="lib-formats__name">{capitalize(familyName(f))}</span>
+            <span className="lib-formats__ext">{Object.keys(f.extensions).map((e) => `.${e}`).join(' ')}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="lib-formats__note muted">{FORMAT_CAVEAT}</p>
+    </Modal>
   );
 }
