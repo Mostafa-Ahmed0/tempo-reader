@@ -1,0 +1,78 @@
+# Builds the Android app and attaches the APK to the workflow run (Actions tab → run → Artifacts).
+# Debug APK: always. Signed release APK: only when the TEMPO_* repository secrets are set (see README).
+name: Android APK
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      HAS_KEYSTORE: ${{ secrets.TEMPO_KEYSTORE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the web app
+        run: npm run build
+
+      - name: Copy it into the Android project
+        run: npx cap sync android
+
+      # Capacitor 8 / Android Gradle Plugin 8.13 compile with Java 21.
+      # The Android SDK (platform 36, build-tools) comes preinstalled on GitHub's ubuntu runners.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Build debug APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: tempo-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Build signed release APK
+        if: env.HAS_KEYSTORE == 'true'
+        working-directory: android
+        env:
+          TEMPO_KEYSTORE: ${{ runner.temp }}/tempo-release.jks
+          TEMPO_KEYSTORE_PASSWORD: ${{ secrets.TEMPO_KEYSTORE_PASSWORD }}
+          TEMPO_KEY_ALIAS: ${{ secrets.TEMPO_KEY_ALIAS }}
+          TEMPO_KEY_PASSWORD: ${{ secrets.TEMPO_KEY_PASSWORD }}
+        run: |
+          echo "${{ secrets.TEMPO_KEYSTORE_BASE64 }}" | base64 --decode > "$TEMPO_KEYSTORE"
+          ./gradlew assembleRelease --no-daemon --stacktrace
+          rm -f "$TEMPO_KEYSTORE"
+
+      - name: Upload release APK
+        if: env.HAS_KEYSTORE == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: tempo-release-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error

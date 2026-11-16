@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- --bg of Tempo's dark theme (src/styles/theme.css) -->
+    <color name="tempo_background">#111214</color>
+</resources>

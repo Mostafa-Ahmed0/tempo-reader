@@ -1,0 +1,143 @@
+/* App shell: bottom tabs on phones, left rail on wide screens. */
+
+.shell {
+  min-height: 100dvh;
+}
+
+.shell__main {
+  min-height: 100dvh;
+  /* leave room for the fixed tab bar */
+  padding-bottom: calc(var(--tabbar-height) + env(safe-area-inset-bottom, 0px));
+}
+
+.shell__nav {
+  position: fixed;
+  z-index: 50;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(var(--tabbar-height) + env(safe-area-inset-bottom, 0px));
+  padding: 0 max(var(--space-2), env(safe-area-inset-left, 0px)) env(safe-area-inset-bottom, 0px)
+    max(var(--space-2), env(safe-area-inset-right, 0px));
+  background: color-mix(in srgb, var(--bg-elevated) 86%, transparent);
+  backdrop-filter: saturate(1.4) blur(14px);
+  -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  border-top: 1px solid var(--border);
+}
+
+.shell__brand {
+  display: none;
+}
+
+.shell__tabs {
+  list-style: none;
+  padding: 0;
+  height: var(--tabbar-height);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.shell__tab {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+.shell__tab-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 30px;
+  border-radius: var(--radius-full);
+  transition: background-color var(--duration-med) var(--ease-out);
+}
+.shell__tab:hover {
+  color: var(--text);
+}
+.shell__tab.is-active {
+  color: var(--text);
+}
+.shell__tab.is-active .shell__tab-icon {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+@media (min-width: 768px) {
+  .shell__main {
+    padding-bottom: 0;
+    padding-left: calc(var(--rail-width) + env(safe-area-inset-left, 0px));
+  }
+  .shell__nav {
+    top: 0;
+    right: auto;
+    width: calc(var(--rail-width) + env(safe-area-inset-left, 0px));
+    height: auto;
+    padding: calc(var(--space-5) + env(safe-area-inset-top, 0px)) 0 var(--space-5) env(safe-area-inset-left, 0px);
+    border-top: none;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-6);
+  }
+  .shell__brand {
+    display: block;
+    font-family: var(--font-serif);
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    color: var(--text);
+  }
+  .shell__brand span {
+    color: var(--focus);
+  }
+  .shell__tabs {
+    height: auto;
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+    margin: 0;
+  }
+  .shell__tab {
+    height: 64px;
+    width: var(--rail-width);
+  }
+}
+
+/* Lazy-route fallback: a single soft pulse, centred. */
+.route-fallback {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+}
+/* Tab pages: keep the nav visible, just fill the content area. */
+.route-fallback--inline {
+  position: static;
+  min-height: 60dvh;
+  background: transparent;
+}
+.route-fallback__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--focus);
+  animation: pulse 1s var(--ease-out) infinite alternate;
+}
+@keyframes pulse {
+  from {
+    opacity: 0.25;
+    transform: scale(0.8);
+  }
+}

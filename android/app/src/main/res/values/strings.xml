@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Tempo</string>
+    <string name="title_activity_main">Tempo</string>
+    <string name="package_name">app.tempo.reader</string>
+    <string name="custom_url_scheme">app.tempo.reader</string>
+    <string name="open_with_label">Read with Tempo</string>
+    <string name="share_label">Add to Tempo</string>
+</resources>

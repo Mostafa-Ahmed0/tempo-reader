@@ -1,0 +1,87 @@
+/* One RSVP frame (WordDisplay). Geometry is set from JS: --rsvp-anchor (px from the left edge). */
+.rd-rsvp {
+  --rsvp-ink: var(--text);
+  --rsvp-line: calc(var(--rsvp-size, 44px) * 1.6);
+  --rsvp-guide: calc(var(--rsvp-size, 44px) * 0.32);
+  position: relative;
+  width: 100%;
+  height: calc(var(--rsvp-line) + 2 * var(--rsvp-guide) + 8px);
+  /* never let a flex/grid parent squeeze the stage (overflow:hidden would otherwise allow it) */
+  min-height: calc(var(--rsvp-line) + 2 * var(--rsvp-guide) + 8px);
+  flex: none;
+  overflow: hidden;
+  contain: layout paint;
+  user-select: none;
+  -webkit-user-select: none;
+  color: var(--rsvp-ink);
+  direction: ltr; /* the stage itself is a physical canvas; the word carries dir="auto" */
+}
+
+.rd-rsvp__line {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  height: var(--rsvp-line);
+  margin-top: calc(var(--rsvp-line) / -2);
+  display: flex;
+  align-items: center;
+  white-space: pre;
+  will-change: transform;
+}
+
+.rd-rsvp__word {
+  display: inline-block;
+  font-weight: 500;
+  line-height: var(--rsvp-line);
+  letter-spacing: 0.005em;
+  white-space: pre;
+  font-kerning: normal;
+  font-variant-ligatures: common-ligatures contextual;
+  color: var(--rsvp-ink);
+  /* the guides carry the anchor; no padding so gradient offsets == glyph offsets */
+  padding: 0;
+}
+
+/* Highlight: hard-stop gradient painted through the glyphs. Keeps the text a single shaped run. */
+.rd-rsvp__word--clip {
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* Focus guides: short ticks above and below the anchor. */
+.rd-rsvp__guide {
+  position: absolute;
+  left: var(--rsvp-anchor, 37%);
+  width: 2px;
+  height: var(--rsvp-guide);
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--focus);
+  opacity: 0.55;
+}
+.rd-rsvp__guide--top {
+  top: 2px;
+}
+.rd-rsvp__guide--bottom {
+  bottom: 2px;
+}
+.rd-rsvp__guide::before {
+  /* hairline running across the stage, very faint, gives the eye a horizon */
+  content: '';
+  position: absolute;
+  left: -100vw;
+  width: 200vw;
+  height: 1px;
+  background: var(--border);
+  opacity: 0.9;
+}
+.rd-rsvp__guide--top::before {
+  bottom: 0;
+}
+.rd-rsvp__guide--bottom::before {
+  top: 0;
+}

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!--
+    Tempo app icon (master). The word "tempo" as the reader shows it: one word, its focus letter
+    (the "e", the optimal recognition point of a 5-letter word) in the highlight red, between the
+    reader's two tick marks. Letters are drawn as round-capped strokes (no font needed), so the
+    icon renders identically everywhere. `npm run icons` builds every PNG and the Android
+    resources from this file; it reuses the <g id="mark"> and the colours below.
+      background #111214 (dark theme --bg), ink #ece9e2 (--text), focus #ff4d4d (default highlight)
+  -->
+  <rect id="bg" width="512" height="512" rx="112" fill="#111214"/>
+  <g id="mark" transform="translate(256 256) scale(0.69) translate(-263 -250)" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="22">
+    <g stroke="#ece9e2">
+      <!-- t -->
+      <path d="M18 172 V266 Q18 289 41 289 M0 211 H44"/>
+      <!-- m -->
+      <path d="M194 211 V289 M194 237 A26 26 0 0 1 246 237 V289 M246 237 A26 26 0 0 1 298 237 V289"/>
+      <!-- p -->
+      <path d="M334 211 V340"/>
+      <circle cx="373" cy="250" r="39"/>
+      <!-- o -->
+      <circle cx="487" cy="250" r="39"/>
+    </g>
+    <!-- e (focus letter) -->
+    <path stroke="#ff4d4d" d="M80 250 H158 A39 39 0 1 0 146.6 277.6"/>
+    <!-- focus ticks -->
+    <path stroke="#ece9e2" stroke-opacity="0.55" stroke-width="12" d="M119 128 V166 M119 334 V372"/>
+  </g>
+</svg>

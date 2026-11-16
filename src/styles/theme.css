@@ -1,0 +1,148 @@
+/*
+ * Tempo design tokens.
+ * App.tsx sets <html data-theme="..."> and the --focus colour from the settings store.
+ * Components must only use these variables, never raw colours.
+ */
+
+:root {
+  /* Type */
+  /* The first family of each stack is bundled (src/app/fonts.ts, @fontsource); the rest are fallbacks
+     for scripts the bundled fonts do not cover (e.g. CJK, Arabic, Hebrew, Devanagari). */
+  --font-sans: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif;
+  --font-serif: 'Literata Variable', 'Literata', 'Iowan Old Style', 'Charter', 'Palatino Linotype', Palatino, 'Noto Serif', Georgia, serif;
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  --font-dyslexic: 'OpenDyslexic', 'Atkinson Hyperlegible', 'Lexend', 'Comic Sans MS', 'Verdana', sans-serif;
+  /* The family used for RSVP words; App.tsx sets it from settings.fontFamily. */
+  --font-reader: var(--font-sans);
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2.25rem;
+  --leading-tight: 1.2;
+  --leading-normal: 1.55;
+  --tracking-tight: -0.015em;
+  --tracking-wide: 0.06em;
+
+  /* Spacing scale (4px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 40px;
+  --gutter: max(16px, var(--space-4));
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 999px;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 120ms;
+  --duration-med: 220ms;
+
+  /* Layout */
+  --tabbar-height: 64px;
+  --rail-width: 88px;
+  --content-max: 1080px;
+  --tap-target: 44px;
+
+  /* RSVP highlight (overridden at runtime from settings.highlightColor) */
+  --focus: #ff4d4d;
+}
+
+/* ---------- Dark (default) : warm charcoal, ivory text, amber accent ---------- */
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #111214;
+  --bg-elevated: #17181c;
+  --surface: #1e2025;
+  --surface-hover: #25272d;
+  --border: #2a2d33;
+  --border-strong: #3a3e46;
+  --text: #ece9e2;
+  --text-muted: #9a978f;
+  --accent: #e9b872;
+  --accent-contrast: #1b1408;
+  --accent-soft: rgb(233 184 114 / 0.14);
+  --danger: #ff6b6b;
+  --danger-soft: rgb(255 107 107 / 0.14);
+  --ring: rgb(233 184 114 / 0.55);
+  --scrim: rgb(0 0 0 / 0.6);
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.35), 0 8px 24px rgb(0 0 0 / 0.35);
+  --shadow-lg: 0 2px 6px rgb(0 0 0 / 0.4), 0 24px 64px rgb(0 0 0 / 0.5);
+}
+
+/* ---------- Light : paper white, ink text, burnt-orange accent ---------- */
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f7f5f0;
+  --bg-elevated: #ffffff;
+  --surface: #efece5;
+  --surface-hover: #e7e3da;
+  --border: #e0dbd0;
+  --border-strong: #c9c3b6;
+  --text: #1d1c1a;
+  --text-muted: #6a665e;
+  --accent: #a4520f;
+  --accent-contrast: #ffffff;
+  --accent-soft: rgb(164 82 15 / 0.1);
+  --danger: #c0392b;
+  --danger-soft: rgb(192 57 43 / 0.1);
+  --ring: rgb(164 82 15 / 0.45);
+  --scrim: rgb(20 18 14 / 0.4);
+  --shadow: 0 1px 2px rgb(30 25 15 / 0.06), 0 8px 24px rgb(30 25 15 / 0.08);
+  --shadow-lg: 0 2px 6px rgb(30 25 15 / 0.08), 0 24px 64px rgb(30 25 15 / 0.16);
+}
+
+/* ---------- Sepia : aged paper, brown ink ---------- */
+:root[data-theme='sepia'] {
+  color-scheme: light;
+  --bg: #f3ead6;
+  --bg-elevated: #faf4e4;
+  --surface: #ebe0c6;
+  --surface-hover: #e3d6b8;
+  --border: #dacba7;
+  --border-strong: #c4b28a;
+  --text: #3b2f22;
+  --text-muted: #77664f;
+  --accent: #8a5526;
+  --accent-contrast: #fff8ea;
+  --accent-soft: rgb(138 85 38 / 0.12);
+  --danger: #a8362a;
+  --danger-soft: rgb(168 54 42 / 0.12);
+  --ring: rgb(138 85 38 / 0.45);
+  --scrim: rgb(40 28 12 / 0.4);
+  --shadow: 0 1px 2px rgb(60 40 10 / 0.08), 0 8px 24px rgb(60 40 10 / 0.1);
+  --shadow-lg: 0 2px 6px rgb(60 40 10 / 0.1), 0 24px 64px rgb(60 40 10 / 0.18);
+}
+
+/* ---------- Black : true black for OLED, dimmed text ---------- */
+:root[data-theme='black'] {
+  color-scheme: dark;
+  --bg: #000000;
+  --bg-elevated: #0a0a0b;
+  --surface: #121214;
+  --surface-hover: #1a1a1d;
+  --border: #212125;
+  --border-strong: #303036;
+  --text: #d9d6cf;
+  --text-muted: #85827b;
+  --accent: #e9b872;
+  --accent-contrast: #1b1408;
+  --accent-soft: rgb(233 184 114 / 0.12);
+  --danger: #ff6b6b;
+  --danger-soft: rgb(255 107 107 / 0.12);
+  --ring: rgb(233 184 114 / 0.5);
+  --scrim: rgb(0 0 0 / 0.75);
+  --shadow: 0 0 0 1px var(--border);
+  --shadow-lg: 0 0 0 1px var(--border-strong), 0 24px 64px rgb(0 0 0 / 0.8);
+}
